@@ -5,3 +5,22 @@ config/options.ini
 config/permissions.ini
 config/whitelist.txt
 notes.txt
+musicbot/activity.txt
+musicbot/editedmsg.txt
+musicbot/idlist.txt
+musicbot/lol.txt
+musicbot/martyrs.txt
+musicbot/reminders.txt
+musicbot/removed.txt
+musicbot/wordfreq.txt
+musicbot/wordfreqbak.txt
+requirements.txt
+runbot.bat
+runbot_mac.command
+test.wav
+uno/new 1.py
+uno/uno
+uno/uno 2.dat
+uno/uno.dat
+update_deps.bat
+update_macdeps.command
