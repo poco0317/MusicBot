@@ -95,6 +95,11 @@ class MusicPlayer(EventEmitter):
         self.playlist = playlist
         self.playlist.on('entry-added', self.on_entry_added)
         self._volume = bot.config.default_volume
+        self.tts = 0
+        self.ttsoverride = 0
+        self.ttstime = 0
+        self.ttsqueue = []
+        self.ttsrunning = 0
 
         self._play_lock = asyncio.Lock()
         self._current_player = None
@@ -161,7 +166,8 @@ class MusicPlayer(EventEmitter):
         self._events.clear()
         self._kill_current_player()
 
-    def _playback_finished(self):
+    def _playback_finished(self, forced=False):
+        #print("_playback finished called")
         entry = self._current_entry
 
         if self._current_player:
@@ -179,8 +185,13 @@ class MusicPlayer(EventEmitter):
 
             else:
                 # print("[Config:SaveVideos] Deleting file: %s" % os.path.relpath(entry.filename))
-                asyncio.ensure_future(self._delete_file(entry.filename))
-
+                if forced == True:
+                    asyncio.ensure_future(self._delete_file("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot-master\\test.wav"))
+                    if self.tts == 1:
+                        if self.state == MusicPlayerState.PLAYING:
+                            self.state = MusicPlayerState.STOPPED
+                else:
+                    asyncio.ensure_future(self._delete_file(entry.filename))
         self.emit('finished-playing', player=self, entry=entry)
 
     def _kill_current_player(self):
@@ -217,8 +228,23 @@ class MusicPlayer(EventEmitter):
 
     def play(self, _continue=False):
         self.loop.create_task(self._play(_continue=_continue))
-
-    async def _play(self, _continue=False):
+    def pray(self, _continue=False, filename=""):
+        self._kill_current_player()
+        self._current_player = self._monkeypatch_player(self.voice_client.create_ffmpeg_player(
+            filename,
+            before_options="-nostdin",
+            options="-vn -b:a 128k",
+            # Threadsafe call soon, b/c after will be called from the voice playback thread.
+            after=lambda: self.loop.call_soon_threadsafe(self._playback_finished, forced=True)
+        ))
+        
+        self._current_player.setDaemon(True)
+        self._current_player.buff.volume = self.volume
+        self.state = MusicPlayerState.STOPPED
+        self._current_entry = "Custom Song"
+        self._current_player.start()
+        self.emit('play', player=self, entry="Custom Song")
+    async def _play(self, _continue=False, _forced=False):
         """
             Plays the next entry from the playlist, or resumes playback of the current entry if paused.
         """

@@ -15,14 +15,14 @@ class Config:
             print('[config] Config file not found, copying example_options.ini')
 
             try:
-                shutil.copy('config/example_options.ini', config_file)
+                shutil.copy('/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/example_options.ini', config_file)
 
                 # load the config again and check to see if the user edited that one
                 c = configparser.ConfigParser()
                 c.read(config_file, encoding='utf-8')
 
                 if not int(c.get('Permissions', 'OwnerID', fallback=0)): # jake pls no flame
-                    print("\nPlease configure config/options.ini and restart the bot.", flush=True)
+                    print("\nPlease configure /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/options.ini and restart the bot.", flush=True)
                     os._exit(1)
 
             except FileNotFoundError as e:
@@ -39,7 +39,7 @@ class Config:
 
             except Exception as e:
                 print(e)
-                print("\nUnable to copy config/example_options.ini to %s" % config_file, flush=True)
+                print("\nUnable to copy /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/example_options.ini to %s" % config_file, flush=True)
                 os._exit(2)
 
         config = configparser.ConfigParser(interpolation=None)
@@ -188,9 +188,9 @@ class ConfigDefaults:
     delete_invoking = False
     debug_mode = False
 
-    options_file = 'config/options.ini'
-    blacklist_file = 'config/blacklist.txt'
-    auto_playlist_file = 'config/autoplaylist.txt' # this will change when I add playlists
+    options_file = '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/options.ini'
+    blacklist_file = '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/blacklist.txt'
+    auto_playlist_file = '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/autoplaylist.txt' # this will change when I add playlists
 
 # These two are going to be wrappers for the id lists, with add/remove/load/save functions
 # and id/object conversion so types aren't an issue

@@ -1,10 +1,7 @@
-.idea/
-*.pyc
-~*/
 
-audio_cache/
-dectalk/
-
-discord.log
+config/autoplaylist.txt
+config/blacklist.txt
 config/options.ini
 config/permissions.ini
+config/whitelist.txt
+notes.txt

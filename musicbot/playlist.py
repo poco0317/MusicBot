@@ -259,7 +259,10 @@ class Playlist(EventEmitter):
 
         # When the player plays a song, it eats the first playlist item, so we just have to add the time back
         if not player.is_stopped and player.current_entry:
-            estimated_time += player.current_entry.duration - player.progress
+            try:
+                estimated_time += player.current_entry.duration - player.progress
+            except:
+                estimated_time += 0
 
         return datetime.timedelta(seconds=estimated_time)
 

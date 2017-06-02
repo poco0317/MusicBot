@@ -6,7 +6,7 @@ from discord import User as discord_User
 
 
 class PermissionsDefaults:
-    perms_file = 'config/permissions.ini'
+    perms_file = '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/permissions.ini'
 
     CommandWhiteList = set()
     CommandBlackList = set()
@@ -20,6 +20,7 @@ class PermissionsDefaults:
 
     AllowPlaylists = True
     InstaSkip = False
+    VolumeOverride = False
 
 
 class Permissions:
@@ -31,12 +32,12 @@ class Permissions:
             print('[permissions] Permissions file not found, copying example_permissions.ini')
 
             try:
-                shutil.copy('config/example_permissions.ini', config_file)
+                shutil.copy('/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/example_permissions.ini', config_file)
                 self.config.read(config_file, encoding='utf-8')
 
             except Exception as e:
                 traceback.print_exc()
-                raise RuntimeError("Unable to copy config/example_permissions.ini to %s: %s" % (config_file, e))
+                raise RuntimeError("Unable to copy /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/example_permissions.ini to %s: %s" % (config_file, e))
 
         self.default_group = PermissionGroup('Default', self.config['Default'])
         self.groups = set()
@@ -101,7 +102,7 @@ class PermissionGroup:
 
         self.allow_playlists = section_data.get('AllowPlaylists', fallback=PermissionsDefaults.AllowPlaylists)
         self.instaskip = section_data.get('InstaSkip', fallback=PermissionsDefaults.InstaSkip)
-
+        self.volumeoverride = section_data.get('VolumeOverride', fallback=PermissionsDefaults.VolumeOverride)
         self.validate()
 
     def validate(self):
@@ -142,7 +143,9 @@ class PermissionGroup:
         self.instaskip = configparser.RawConfigParser.BOOLEAN_STATES.get(
             self.instaskip, PermissionsDefaults.InstaSkip
         )
-
+        self.volumeoverride = configparser.RawConfigParser.BOOLEAN_STATES.get(
+            self.volumeoverride, PermissionsDefaults.VolumeOverride
+        )
 
     def add_user(self, uid):
         self.user_list.add(uid)
