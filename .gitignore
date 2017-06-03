@@ -24,3 +24,5 @@ uno/uno 2.dat
 uno/uno.dat
 update_deps.bat
 update_macdeps.command
+*.pyc
+musicbot/quotes.txt

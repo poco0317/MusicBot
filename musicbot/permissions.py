@@ -6,7 +6,7 @@ from discord import User as discord_User
 
 
 class PermissionsDefaults:
-    perms_file = '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/permissions.ini'
+    perms_file = 'config/permissions.ini'
 
     CommandWhiteList = set()
     CommandBlackList = set()
@@ -32,12 +32,12 @@ class Permissions:
             print('[permissions] Permissions file not found, copying example_permissions.ini')
 
             try:
-                shutil.copy('/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/example_permissions.ini', config_file)
+                shutil.copy('config/example_permissions.ini', config_file)
                 self.config.read(config_file, encoding='utf-8')
 
             except Exception as e:
                 traceback.print_exc()
-                raise RuntimeError("Unable to copy /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/config/example_permissions.ini to %s: %s" % (config_file, e))
+                raise RuntimeError("Unable to copy config/example_permissions.ini to %s: %s" % (config_file, e))
 
         self.default_group = PermissionGroup('Default', self.config['Default'])
         self.groups = set()

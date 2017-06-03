@@ -83,6 +83,8 @@ class URLPlaylistEntry(BasePlaylistEntry):
         self.meta = meta
 
         self.download_folder = self.playlist.downloader.download_folder
+        if self.url == "NoURL":
+            BasePlaylistEntry.filename = self.expected_filename
 
     @classmethod
     def from_json(cls, playlist, jsonstring):
@@ -208,7 +210,9 @@ class URLPlaylistEntry(BasePlaylistEntry):
     # noinspection PyShadowingBuiltins
     async def _really_download(self, *, hash=False):
         print("[Download] Started:", self.url)
-
+        if self.url == "NoURL":
+            print("[Download] Not necessary.")
+            return ""
         try:
             result = await self.playlist.downloader.extract_info(self.playlist.loop, self.url, download=True)
         except Exception as e:

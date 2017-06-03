@@ -152,8 +152,7 @@ def main():
 
     loops = 0
     max_wait_time = 60
-    bad_retries = 0
-    
+
     while tryagain:
         # Maybe I need to try to import stuff first, then actually import stuff
         # It'd save me a lot of pain with all that awful exception type checking
@@ -206,9 +205,7 @@ def main():
 
         finally:
             if not m or not m.init_ok:
-                loops = -1
-                print("Something went very wrong. I'm trying again.")
-                bad_retries += 1
+                break
 
             asyncio.set_event_loop(asyncio.new_event_loop())
             loops += 1
@@ -216,8 +213,6 @@ def main():
         print("Cleaning up... ", end='')
         gc.collect()
         print("Done.")
-        if bad_retries > 1000:
-            break
 
         sleeptime = min(loops * 2, max_wait_time)
         if sleeptime:

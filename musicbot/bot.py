@@ -53,7 +53,7 @@ from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 load_opus_lib()
 freqdict = dict()
 freqlist = list()
-f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/wordfreq.txt", "r")
+f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\wordfreq.txt", "r")
 for line in f:
     freqdict[re.search("(.+),", line).group(1)] = re.search(".+,(\d+)", line).group(1)
 f.close()
@@ -296,13 +296,13 @@ class MusicBot(discord.Client):
         self.cap_msg_in_a_row = 0
         self.cap_msg_nick = ""
         
-        fl = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/idlist.txt", "r")
+        fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "r")
         self.newmemberlist = []
         for line in fl:
             self.newmemberlist.append(line.strip())
         fl.close()
         
-        fr = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/reminders.txt", "r")
+        fr = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\reminders.txt", "r")
         self.reminderlist = []
         for line in fr:
             self.reminderlist.append(line.strip().split("@!@"))
@@ -311,10 +311,18 @@ class MusicBot(discord.Client):
         self.reminderlist.pop(0)
         
         self.activityDict = dict()
-        fa = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/activity.txt", "r")
+        fa = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activity.txt", "r")
         for line in fa:
             self.activityDict[line.split("@")[0]] = [line.split("@")[1], line.split("@")[2]]
         fa.close()
+        
+        self.quotelist = []
+        fq = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\quotes.txt", "r")
+        for line in fq:
+            curline = line.strip().split(";;:;")
+            self.quotelist.append([curline[0],curline[1],curline[2],curline[3]])
+        fq.close()
+        self.Pinner = None
         
         
         self.mblock = False
@@ -327,6 +335,7 @@ class MusicBot(discord.Client):
         self.modchan = None
         
         self.stop_GTQ = False
+        self.musicdirInstanceDict = dict()
         
         
 
@@ -1001,15 +1010,15 @@ class MusicBot(discord.Client):
             if role.name == "Admin":
                 self.adminrole = role
         #await self.send_message(srvr, "BarinadeBot is online.")
-        self.loop.call_later(1, self._wordofthedayloop, self.loop.time(), srvr)
-        self.loop.call_later(1, self._checkinvitelistloop, srvr)
+        #self.loop.call_later(1, self._wordofthedayloop, self.loop.time(), srvr)
+        #self.loop.call_later(1, self._checkinvitelistloop, srvr)
         self.loop.call_later(1, self._remind_checker)
         # t-t-th-th-that's all folks!
 
     async def cmd_help(self, permissions, author, command=None):
         """
         Usage:
-            !help [command]
+            ^help [command]
 
         Prints a help message.
         If a command is specified, it prints a help message for that command.
@@ -1030,7 +1039,7 @@ class MusicBot(discord.Client):
                 return Response("No such command", delete_after=10)
 
         else:
-            helpmsg = "**Commands available for your group, "+self.permissions.for_user(author).name+" (say !help command for help with those commands)**\n```"
+            helpmsg = "**Commands available for your group, "+self.permissions.for_user(author).name+" (say ^help command for help with those commands)**\n```"
             commands = []
 
             for att in dir(self):
@@ -1052,7 +1061,7 @@ class MusicBot(discord.Client):
     async def cmd_blacklist(self, message, user_mentions, option, something):
         """
         Usage:
-            !blacklist [ + | - | add | remove ] @UserName [@UserName2 ...]
+            ^blacklist [ + | - | add | remove ] @UserName [@UserName2 ...]
 
         Add or remove users to the blacklist.
         Blacklisted users are forbidden from using bot commands.
@@ -1099,7 +1108,7 @@ class MusicBot(discord.Client):
     async def cmd_id(self, author, user_mentions):
         """
         Usage:
-            !id [@user]
+            ^id [@user]
 
         Tells the user their id or the id of another user.
         """
@@ -1113,7 +1122,7 @@ class MusicBot(discord.Client):
     async def cmd_joinserver(self, message, server_link=None):
         """
         Usage:
-            !joinserver invite_link
+            ^joinserver invite_link
 
         Asks the bot to join a server.  Note: Bot accounts cannot use invite links.
         """
@@ -1136,7 +1145,7 @@ class MusicBot(discord.Client):
     async def cmd_pray(self, player, channel, author, message):
         '''
         Usage:
-            !pray filepath
+            ^pray filepath
             Plays audio/video file on computer
             Breaks shit.
         '''
@@ -1144,14 +1153,25 @@ class MusicBot(discord.Client):
         filename.pop(0)
         filename = " ".join(filename)
         try:
-            await player.pray(_continue=False, filename=filename)
+            singlename = re.search("\\\\([^\\\\\\\\\\\\\\\\\\\]+)\.[\w\d]+$", filename).group(0) #dont ask why this works
+        except Exception as e:
+            print(e)
+            return Response("The filepath given either isn't a filepath or is terribly malformed.", delete_after=10)
+        singlename = singlename[1:]
+        try:
+            await player.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=singlename, Filepath=filename, channel=channel, author=author)
         except:
-            print("ignoring errors")
+            return Response("The file does not exist or is not a file with audio.", delete_after=10)
+        return Response("I have queued a file called **"+singlename+"**", delete_after=20)
+        #try:
+        #    await player.pray(_continue=False, filename=filename)
+        #except:
+        #    print("ignoring errors")
     async def cmd_play(self, player, channel, author, server, permissions, leftover_args, song_url, Forced=False, mesag=None, ForcedAuthor=None):
         """
         Usage:
-            !play song_link
-            !play text to search for
+            ^play song_link
+            ^play text to search for
 
         Adds the song to the playlist.  If a link is not provided, the first
         result from a youtube search is added to the queue.
@@ -1450,7 +1470,7 @@ class MusicBot(discord.Client):
     async def cmd_search(self, player, channel, author, permissions, leftover_args):
         """
         Usage:
-            !search [service] [number] query
+            ^search [service] [number] query
 
         Searches a service for a video and adds it to the queue.
         - service: any one of the following services:
@@ -1580,7 +1600,7 @@ class MusicBot(discord.Client):
     async def cmd_np(self, player, channel, server, message):
         """
         Usage:
-            !np
+            ^np
 
         Displays the current song in chat.
         """
@@ -1611,7 +1631,7 @@ class MusicBot(discord.Client):
     async def cmd_summon(self, channel, author, voice_channel):
         """
         Usage:
-            !summon
+            ^summon
 
         Call the bot to the summoner's voice channel.
         """
@@ -1652,7 +1672,7 @@ class MusicBot(discord.Client):
     async def cmd_pause(self, player):
         """
         Usage:
-            !pause
+            ^pause
 
         Pauses playback of the current song.
         """
@@ -1666,7 +1686,7 @@ class MusicBot(discord.Client):
     async def cmd_resume(self, player):
         """
         Usage:
-            !resume
+            ^resume
 
         Resumes playback of a paused song.
         """
@@ -1680,7 +1700,7 @@ class MusicBot(discord.Client):
     async def cmd_shuffle(self, channel, player):
         """
         Usage:
-            !shuffle
+            ^shuffle
 
         Shuffles the playlist.
         """
@@ -1702,7 +1722,7 @@ class MusicBot(discord.Client):
     async def cmd_clear(self, player, author):
         """
         Usage:
-            !clear
+            ^clear
 
         Clears the playlist.
         """
@@ -1713,7 +1733,7 @@ class MusicBot(discord.Client):
     async def cmd_skip(self, player, channel, author, message, permissions, voice_channel):
         """
         Usage:
-            !skip
+            ^skip
 
         Skips the current song when enough votes are cast, or by the bot owner.
         """
@@ -1799,7 +1819,7 @@ class MusicBot(discord.Client):
     @owner_only
     async def cmd_lockvolume(self, message, author):
         '''
-        Toggles !volume lock
+        Toggles ^volume lock
         '''
         global lockedvolume
         if lockedvolume == 1:
@@ -1811,8 +1831,8 @@ class MusicBot(discord.Client):
     async def cmd_forcevol(self, message, author, player):
         '''
         Usage:
-            !forcevol number
-            Forces !volume beyond 100%. Takes any number. 1 = 100.
+            ^forcevol number
+            Forces ^volume beyond 100%. Takes any number. 1 = 100.
         '''
         msg = message.content.strip().split()
         msg.pop(0)
@@ -1821,7 +1841,7 @@ class MusicBot(discord.Client):
     async def cmd_volume(self, message, player, permissions, new_volume=None):
         """
         Usage:
-            !volume (+/-)[volume]
+            ^volume (+/-)[volume]
 
         Sets the playback volume. Accepted values are from 1 to 100.
         Putting + or - before the volume will make the volume change relative to the current volume.
@@ -1870,9 +1890,9 @@ class MusicBot(discord.Client):
     async def cmd_playlist(self, channel, player):
         '''
         Usage:
-            !playlist
+            ^playlist
             
-        This is an alias for !queue.
+        This is an alias for ^queue.
         Prints the current song playlist.
         '''
         lines = []
@@ -1917,7 +1937,7 @@ class MusicBot(discord.Client):
     async def cmd_queue(self, channel, player):
         """
         Usage:
-            !queue
+            ^queue
 
         Prints the current song queue.
         """
@@ -1965,7 +1985,7 @@ class MusicBot(discord.Client):
     async def cmd_clean(self, message, channel, server, author, search_range=50):
         """
         Usage:
-            !clean [range]
+            ^clean [range]
 
         Removes up to [range] messages the bot has posted in chat. Default: 50, Max: 1000
         """
@@ -2023,7 +2043,7 @@ class MusicBot(discord.Client):
     async def cmd_pldump(self, channel, song_url):
         """
         Usage:
-            !pldump url
+            ^pldump url
 
         Dumps the individual urls of a playlist
         """
@@ -2068,7 +2088,7 @@ class MusicBot(discord.Client):
     async def cmd_listids(self, server, author, leftover_args, cat='all'):
         """
         Usage:
-            !listids [categories]
+            ^listids [categories]
 
         Lists the ids for various things.  Categories are:
            all, users, roles, channels
@@ -2126,7 +2146,7 @@ class MusicBot(discord.Client):
     async def cmd_perms(self, author, channel, server, permissions):
         """
         Usage:
-            !perms
+            ^perms
 
         Sends the user a list of their permissions.
         """
@@ -2147,7 +2167,7 @@ class MusicBot(discord.Client):
     async def cmd_setname(self, leftover_args, name):
         """
         Usage:
-            !setname name
+            ^setname name
 
         Changes the bot's username.
         Note: This operation is limited by discord to twice per hour.
@@ -2166,7 +2186,7 @@ class MusicBot(discord.Client):
     async def cmd_setnick(self, server, channel, leftover_args, nick):
         """
         Usage:
-            !setnick nick
+            ^setnick nick
 
         Changes the bot's nickname.
         """
@@ -2187,7 +2207,7 @@ class MusicBot(discord.Client):
     async def cmd_setavatar(self, message, url=None):
         """
         Usage:
-            !setavatar [url]
+            ^setavatar [url]
 
         Changes the bot's avatar.
         Attaching a file and leaving the url parameter blank also works.
@@ -2212,14 +2232,14 @@ class MusicBot(discord.Client):
     async def cmd_chroles(self, server, channel, message, author, user_mentions):
         """
         Usage:
-            !chroles @user Role1[, Role2, Role3, Role4, ...]
+            ^chroles @user Role1[, Role2, Role3, Role4, ...]
             
         Replaces @user's roles by removing all previous roles and replacing them with the list you give.
         At least 1 role is required. Separate roles with commas.
         """
         leftargs = message.content.split()
         if len(leftargs) < 3:
-            return Response("```Usage:\n    !chroles @user Role1[, Role2, Role3, Role4, ...]\n\nReplaces @user's roles.\nAt least 1 role is required. Separate roles with commas.```", delete_after=5)
+            return Response("```Usage:\n    ^chroles @user Role1[, Role2, Role3, Role4, ...]\n\nReplaces @user's roles.\nAt least 1 role is required. Separate roles with commas.```", delete_after=5)
         leftargs.pop(0)
         leftargs.pop(0)
         msg = " ".join(leftargs)
@@ -2246,9 +2266,9 @@ class MusicBot(discord.Client):
     async def cmd_makesub(self, server, channel, message, author):
         '''
         Usage:
-            !makesub [rolename]
+            ^makesub [rolename]
             Creates a new role by the rolename for use in the news role list.
-            Subscribe with !sub [rolename]. View a list with !newsroles.
+            Subscribe with ^sub [rolename]. View a list with ^newsroles.
         '''
         params = message.content.strip().split()
         params.pop(0)
@@ -2266,7 +2286,7 @@ class MusicBot(discord.Client):
     async def cmd_delsub(self, server, channel, message, author):
         '''
         Usage:
-            !delsub [rolename]
+            ^delsub [rolename]
             Deletes an entire news role from the role list. It is gone forever.
         '''
         params = message.content.strip().split()
@@ -2289,18 +2309,18 @@ class MusicBot(discord.Client):
         await self.delete_role(server, delrole)
         await self.send_message(channel, "I have deleted the sublist "+delrole.name)
         
-    async def cmd_sub(self, server, channel, message, author, permissions, user_mentions):
+    async def cmd_sub(self, server, channel, permissions, message, author, user_mentions):
         '''
         Usage:
-            !sub role [@user]
+            ^sub role [@user]
             Subscribe to a game news role list (assign it as one of your roles).
             The role does not have to be a mention, but the @user does.
-            !newsroles for the list of roles.
+            ^newsroles for the list of roles.
         '''
         params = message.content.strip().split()
         params.pop(0)
         try:
-            params = " ".join(params).split("<@")
+            #params = " ".join(params).split("<@")
             params[0] = params[0].strip()
         except:
             return Response("You must include a role.", delete_after=5)
@@ -2324,7 +2344,7 @@ class MusicBot(discord.Client):
                 if user_mentions[0] == author:
                     winner = user_mentions[0]
                 else:
-                    return Response("You don't have permission to sub other people to a news role.", delete_after=10)
+                    return Response("You don't have permission to sub other people to a news role.", delete_after=10) 
         else:
             winner = author
         for role in winner.roles:
@@ -2346,18 +2366,18 @@ class MusicBot(discord.Client):
                 rolelist.append(role.name)
         await self.send_message(channel, "Here is a list of the news-related roles:\n```\n"+"\n".join(rolelist)+"```")
         
-    async def cmd_unsub(self, server, channel, message, author, user_mentions):
+    async def cmd_unsub(self, server, channel, permissions, message, author, user_mentions):
         '''
         Usage:
-            !unsub role [@user]
+            ^unsub role [@user]
             Unsubscribe to a game news role list (unassign it from your roles).
             The role does not have to be a mention, but the @user does.
-            !newsroles for the list of roles.
+            ^newsroles for the list of roles.
         '''
         params = message.content.strip().split()
         params.pop(0)
         try:
-            params = " ".join(params).split("<@")
+            #params = " ".join(params).split("<@")
             params[0] = params[0].strip()
         except:
             return Response("You must include a role.", delete_after=5)
@@ -2395,7 +2415,7 @@ class MusicBot(discord.Client):
     async def cmd_emptyrole(self, server, channel, message, author, user_mentions):
         '''
         Usage:
-            !emptyrole [role]
+            ^emptyrole [role]
             Remove everyone in the server from a role. Useful for news lists.
             This works with or without the @.
         '''
@@ -2422,9 +2442,9 @@ class MusicBot(discord.Client):
     async def cmd_listsubs(self, server, channel, message, author, user_mentions):
         '''
         Usage:
-            !listsubs [role]
+            ^listsubs [role]
             See the full list of people subscribed to a news role.
-            !newsroles for the list of roles.
+            ^newsroles for the list of roles.
             (This works on any role.)
         '''
         params = message.content.strip().split()
@@ -2443,9 +2463,8 @@ class MusicBot(discord.Client):
             return Response("That's everyone...", delete_after=10)
         memberlist = []
         for member in server.members:
-            for role in member.roles:
-                if role == chkrole:
-                    memberlist.append(member.name)
+            if chkrole in member.roles:
+                memberlist.append(member.name)
         await self.send_message(channel, "Here is a list of the members of that role:\n```\n"+"\n".join(memberlist)+"```")
         
     @owner_only
@@ -2490,10 +2509,10 @@ class MusicBot(discord.Client):
 #   unotable[0][1] = channel object
 #   unotable[1][0] = reverse flag (true = normal play)
 #   unotable[1][1] = whether or not the game is going on (1 = True)
-#   unotable[1][2] = the passflag (for !pass)
-#   unotable[1][3] = tempflag for !makeuno reuse
-#   unotable[1][4] = number of times !draw was used
-#   unotable[1][5] = the quit/endflag (for !quituno and !stopgame)
+#   unotable[1][2] = the passflag (for ^pass)
+#   unotable[1][3] = tempflag for ^makeuno reuse
+#   unotable[1][4] = number of times ^draw was used
+#   unotable[1][5] = the quit/endflag (for ^quituno and ^stopgame)
 #   unotable[1][6] = whether or not the bot is in the game
 #   unotable[2][0] = turn number (not to exceed number of players)
 #   unotable[3][0] = number of players - 1
@@ -2504,7 +2523,7 @@ class MusicBot(discord.Client):
     async def cmd_makeuno(self, channel, author):
         '''
         Usage:
-            !makeuno
+            ^makeuno
             Literally creates an uno game. Usually doesn't work if a game is already happening.
         '''
         global unotable
@@ -2516,7 +2535,7 @@ class MusicBot(discord.Client):
             return Response("Dude you can't make a new uno game when one's already happening in channel "+unotable[0][0], delete_after=5)
         else:
             if unotable[1][3] == True:
-                return Response("Dude you can't make another uno game when one's already starting. Say !join in channel "+unotable[0][0], delete_after=20)
+                return Response("Dude you can't make another uno game when one's already starting. Say ^join in channel "+unotable[0][0], delete_after=20)
             unotable = [[channel.name, channel],[True,False,False,True,0,True,False],[0],[0],[dict()],[author.name],"nothing",[author]]
             unotable[6] = " ".join(convcard(cards(1)[0].split()))
             print(unotable[6])
@@ -2525,14 +2544,14 @@ class MusicBot(discord.Client):
                 unotable[6] = " ".join(convcard(cards(1)[0].split()))
                 print("topcard switched")
             unotable[7] = [author]
-            await self.send_message(unotable[0][1], "An Uno game is starting, my dudes :ok_hand: say !join to join, leave by saying !quituno. !startgame starts the game. !botjoingame adds me to the game.")
+            await self.send_message(unotable[0][1], "An Uno game is starting, my dudes :ok_hand: say ^join to join, leave by saying ^quituno. ^startgame starts the game. ^botjoingame adds me to the game.")
             if unotable[0][1] != channel.server.default_channel:
-                await self.send_message(channel.server.default_channel, "An Uno game is starting, my dudes :ok_hand: get the fuck into "+unotable[0][0]+" and say !join, leave by saying !quituno. !startgame starts the game. !botjoingame adds me to the game.")
+                await self.send_message(channel.server.default_channel, "An Uno game is starting, my dudes :ok_hand: get the fuck into "+unotable[0][0]+" and say ^join, leave by saying ^quituno. ^startgame starts the game. ^botjoingame adds me to the game.")
             await self.send_message(channel, author.name+" is player number 0.")
     async def cmd_join(self, channel, author):
         '''
         Usage:
-            !join
+            ^join
             Join an uno game after creation at any point even after it starts.
         '''
         global unotable
@@ -2548,7 +2567,7 @@ class MusicBot(discord.Client):
     async def cmd_startgame(self, channel, author, server):
         '''
         Usage:
-            !startgame
+            ^startgame
             Start an uno game after it is created.
         '''
         global unotable
@@ -2572,7 +2591,7 @@ class MusicBot(discord.Client):
     async def cmd_quituno(self, channel, author, server):
         '''
         Usage:
-            !quituno
+            ^quituno
             Leave the current game of uno. If only 1 player remains, the game ends.
         '''
         global unotable
@@ -2592,7 +2611,7 @@ class MusicBot(discord.Client):
     async def cmd_unokick(self, channel, author, server, user_mentions):
         '''
         Usage:
-            !unokick @Username
+            ^unokick @Username
             Kick someone from an uno game.
         '''
         global unotable
@@ -2612,7 +2631,7 @@ class MusicBot(discord.Client):
     async def cmd_stopgame(self, channel, author):
         '''
         Usage:
-            !stopgame
+            ^stopgame
             Stops an uno game already in progress.
         '''
         global unotable
@@ -2625,7 +2644,7 @@ class MusicBot(discord.Client):
     async def cmd_showcards(self, channel, author):
         '''
         Usage:
-            !showcards
+            ^showcards
             Make the bot PM your cards to you again.
         '''
         global unotable
@@ -2638,7 +2657,7 @@ class MusicBot(discord.Client):
     async def cmd_topcard(self, channel, author, server):
         '''
         Usage:
-            !topcard
+            ^topcard
             Check the top card in an uno game already in progress.
         '''
         global unotable
@@ -2648,7 +2667,7 @@ class MusicBot(discord.Client):
     async def cmd_draw(self, channel, author, server, sendpm=True):
         '''
         Usage:
-            !draw
+            ^draw
             Draw a single uno card in a game already in progress when it is your turn. Possible up to 5 times even if you can play a card.
         '''
         global unotable
@@ -2683,11 +2702,11 @@ class MusicBot(discord.Client):
                 await self.send_message(author, author.name+", you got a "+" ".join(convcard(newcard.split())))
             unotable[1][2] = True
             unotable[1][4] = unotable[1][4] + 1
-            await self.send_message(channel, "Card drawn. You may draw "+str(5-unotable[1][4])+" more cards before being forced to !pass.")
+            await self.send_message(channel, "Card drawn. You may draw "+str(5-unotable[1][4])+" more cards before being forced to ^pass.")
     async def cmd_pass(self, channel, author, server):
         '''
         Usage:
-            !pass
+            ^pass
             Pass your turn in an uno game already in progress when it is your turn and you have drawn at least one time.
         '''
         global unotable
@@ -2718,7 +2737,7 @@ class MusicBot(discord.Client):
                     botcanplay = True
                     break
             if botcanplay == False:
-                await self.send_message(channel, "!draw")
+                await self.send_message(channel, "^draw")
                 await self.cmd_draw(channel, self.user, sendpm=False)
                 print("I had to draw")
                 for card in unotable[4][self.user.name]:
@@ -2729,7 +2748,7 @@ class MusicBot(discord.Client):
                 if botcanplay == True:
                     print("I can play a card.")
                     if len(cardarr) > 1:
-                        sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+cardarr[1])
+                        sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
                     else:
                         wcolr = "r"
                         for x in unotable[4][self.user.name]:
@@ -2739,16 +2758,16 @@ class MusicBot(discord.Client):
                                 wcolr == "b"
                             else:
                                 wcolr == "r"
-                        sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+wcolr)
+                        sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
                     await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
                 else:
                     print("I had to pass")
-                    await self.send_message(channel, "!pass")
+                    await self.send_message(channel, "^pass")
                     await self.cmd_pass(channel, self.user)
             else:
                 print("I can play a card.")
                 if len(cardarr) > 1:
-                    sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+cardarr[1])
+                    sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
                 else:
                     wcolr = "r"
                     for x in unotable[4][self.user.name]:
@@ -2758,7 +2777,7 @@ class MusicBot(discord.Client):
                             wcolr == "b"
                         else:
                             wcolr == "r"
-                    sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+wcolr)
+                    sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
                 await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
             unotable[1][2] = False
             unotable[1][4] = 0
@@ -2766,7 +2785,7 @@ class MusicBot(discord.Client):
     async def cmd_showturn(self, channel, author):
         '''
         Usage:
-            !showturn
+            ^showturn
             Show the player whose turn it currently is in a running game of uno. Shows a list of players in the game.
         '''
         global unotable
@@ -2787,7 +2806,7 @@ class MusicBot(discord.Client):
     async def cmd_showcount(self, channel, author):
         '''
         Usage:
-            !showcount
+            ^showcount
             Show how many cards everyone in the game has.
         '''
         global unotable
@@ -2802,7 +2821,7 @@ class MusicBot(discord.Client):
     async def cmd_plcard(self, channel, author, message, server, sendpm=True):
         '''
         Usage:
-            !plcard cardvalue color
+            ^plcard cardvalue color
             Plays a card in a running uno game when it is your turn and it is possible to play the card. Most forms of words or numbers work.
         '''
         global unotable
@@ -2822,10 +2841,10 @@ class MusicBot(discord.Client):
         allargs = message.content.strip().split()
         allargs.pop(0)  #allargs = [card, color]
         if len(allargs) != 2:
-            return Response("You need to !plcard card color", delete_after=5)
+            return Response("You need to ^plcard card color", delete_after=5)
         else:
             if iscard(allargs) == False:
-                return Response("You need to !plcard card color", delete_after=5)
+                return Response("You need to ^plcard card color", delete_after=5)
             if allargs[1].lower() in ["red", "green", "blue", "yellow"] or allargs[0].lower() in ["skip", "wild", "draw2", "reverse", "wilddraw4"]:
                 nuarrgs = convcard(allargs) #nu is used for user input and not the top card
                 usenu = False
@@ -2899,7 +2918,7 @@ class MusicBot(discord.Client):
                 elif len(unotable[4][author.name]) == 0:
                     await self.send_message(channel, "Congrats to this MOTHERFUCKER for winning: "+author.name)
                     unotable = [["."],[".",0,0,0,0,0,0],[],[],[],[],".",[]]
-                    return await self.send_message(channel, "Start another game by saying !makeuno.")
+                    return await self.send_message(channel, "Start another game by saying ^makeuno.")
                 await self.send_message(channel, author.name+" played. The top card is: "+" ".join(colorize(unotable[6].split(), server)))
                 await self.send_message(channel, "It is now "+unotable[5][unotable[2][0]]+"'s turn.")
                 if unotable[5][unotable[2][0]] == self.user.name:
@@ -2912,7 +2931,7 @@ class MusicBot(discord.Client):
                             botcanplay = True
                             break
                     if botcanplay == False:
-                        await self.send_message(channel, "!draw")
+                        await self.send_message(channel, "^draw")
                         await self.cmd_draw(channel, self.user, sendpm=False)
                         print("I had to draw")
                         for card in unotable[4][self.user.name]:
@@ -2923,7 +2942,7 @@ class MusicBot(discord.Client):
                         if botcanplay == True:
                             print("I can play a card.")
                             if len(cardarr) > 1:
-                                sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+cardarr[1])
+                                sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
                             else:
                                 wcolr = "r"
                                 for x in unotable[4][self.user.name]:
@@ -2933,16 +2952,16 @@ class MusicBot(discord.Client):
                                         wcolr == "b"
                                     else:
                                         wcolr == "r"
-                                sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+wcolr)
+                                sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
                             await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
                         else:
                             print("I had to pass")
-                            await self.send_message(channel, "!pass")
+                            await self.send_message(channel, "^pass")
                             await self.cmd_pass(channel, self.user)
                     else:
                         print("I can play a card.")
                         if len(cardarr) > 1:
-                            sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+cardarr[1])
+                            sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
                         else:
                             wcolr = "r"
                             for x in unotable[4][self.user.name]:
@@ -2952,7 +2971,7 @@ class MusicBot(discord.Client):
                                     wcolr == "b"
                                 else:
                                     wcolr == "r"
-                            sntmsg = await self.send_message(channel, "!plcard "+cardarr[0]+" "+wcolr)
+                            sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
                         await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
                     
                 #for i in range(len(unotable[5])):
@@ -2987,7 +3006,7 @@ class MusicBot(discord.Client):
     async def cmd_botjoingame(self, author, channel):
         '''
         Usage:
-            !botjoingame
+            ^botjoingame
             Make the bot join the uno game only once.
         '''
         global unotable
@@ -3015,99 +3034,499 @@ class MusicBot(discord.Client):
         except:
             return Response("Failure.", delete_after=5)
     
+    async def cmd_mdexit(self, player, author, message, channel):
+        '''
+        Usage:
+            ^mdexit
+            Instantly closes the current music directory session.
+        '''
+        if not player.musicdir:
+            return Response("You cannot stop what has not started.", delete_after=5)
+        if author != player.musicdirCreator:
+            return Response("You did not start this musicdir session.", delete_after=5)
+        await self.edit_message(player.musicdirMessage, "This musicdir session has been forcibly ended.")
+        player.musicdir = False
+        player.musicdirMessage = None
+        player.musicdirDir = None
+        player.musicdirCreator = None
+        try:
+            player.musicdirLoopTask.cancel()
+        except:
+            print("This task never existed...")
+        player.musicdirLoopTask = None
+        return Response("It is done.", delete_after=10)
+    async def cmd_musicdir(self, player, author, message, server, channel):
+        '''
+        Usage:
+            ^musicdir [sm, music, loud]
+            Create a session in the music player for visibly navigating the filestructure of the bot's saved music.
+            The input after the command changes the starting location for convenience.
+            No input puts it in the default music directory.
+            "sm" puts it in the stepmania filesystem.
+            "loud" puts it in the ear rape section.
+            "^mdnav ." will navigate "up" a folder.
+            "^mdnav foldername" will navigate into a folder.
+            "^mdplay filename" will queue a music file to play.
+            "^mdexit" will exit the musicdir system immediately.
+            If nothing is inputted for a full 60 seconds via reactions or commands, the musicdir session quits.
+        '''
+        #depending on input, pick what to use as "dir"
+        #run _build_musicdir in the dir after creating a message for a placeholder
+        # _build_musicdir should run its own loop so no loop is required
+        if player.musicdir:
+            return Response("A session of musicdir is already in progress.", delete_after=15)
+        player.musicdir = True
+        player.musicdirCreator = author
+        self.musicdirInstanceDict[message.server] = player
+        params = message.content.strip().split()
+        params.pop(0)
+        if len(params) == 0:
+            dir = "C:\\Users\\Barinade\\Music"
+        else:
+            if params[0].lower() == "sm":
+                dir = "C:\\Program Files (x86)\\StepMania 5\\Songs"
+            elif params[0].lower() == "music":
+                dir = "C:\\Users\\Barinade\\Music"
+            elif params[0].lower() == "loud":
+                dir = "C:\\Users\\Barinade\\Music\\joke\\stuff2\\fixedsongs"
+            else:
+                dir = "C:\\Users\\Barinade\\Music"
+                
+        mainmessage = await self.send_message(channel, "I'm building the directory you chose...")
+        player.musicdirDir = dir
+        curpage = await self._build_musicdir(player, msg=mainmessage, usr=author, dir=dir)
+        time.sleep(0.5)
+        mainmessage = await self.edit_message(mainmessage, player.pagedict[1][0])
+        player.musicdirMessage = mainmessage
+        if len(player.pagedict) > 1:
+            await self.add_reaction(mainmessage, "👈")
+            await self.add_reaction(mainmessage, "👉")
+            await self.add_reaction(mainmessage, "👆")
+            await self._mess_with_reactions(player, msg=mainmessage, Pagelimit=len(curpage))
+            await self._mess_with_reactions(player, msg=mainmessage, Remove=False, Pagelimit=len(curpage))
+            player.musicdirLoopTask = asyncio.ensure_future(self._hold_musicdir_reaction(player, msg=mainmessage, usr=author))
+        else:
+            player.musicdirLoopTask = asyncio.ensure_future(self._hold_musicdir(player, msg=mainmessage, usr=author))
+            await self.add_reaction(mainmessage, "👆")
+        player.musicdirRefreshLoop = asyncio.ensure_future(self._refresh_looper(player, msg=mainmessage, usr=author))
+    async def delete_message_later(self, msg, time=30):
+        '''
+        Deletes a message after "time" seconds.
+        '''
+        await asyncio.wait_for(asyncio.sleep(time), timeout=time+5, loop=self.loop)
+        await self.delete_message(msg)
+        
+    async def _mess_with_reactions(self, player, msg=None, usr=None, listOfReactions=None, Remove=True, Pagelimit=0, RemoveAll=False):
+        '''
+        meant to help the bot process reactions without blocking itself
+        '''
+        if Remove:
+            if RemoveAll:
+                await self.clear_reactions(msg)
+                return ""
+            try:
+                curReaction = 0
+                for reaction in msg.reactions:
+                    if reaction.emoji in ["1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"]:
+                        curReaction = curReaction+1
+                        if curReaction > Pagelimit:
+                            await self.remove_reaction(msg, reaction.emoji, self.user)
+                return ""
+            except Exception as e:
+                print(e)
+                #print("Something outside of my forces messed with this process.")
+                return ""
+        else:
+            try:
+                i = 0
+                for i in range(Pagelimit):
+                    msg = await self.get_message(msg.channel, msg.id)
+                    if str(i+1)+"⃣" not in msg.reactions:
+                        if i == 0:
+                            await self.add_reaction(msg, str(i+1)+"⃣")
+                        if i != 0 and msg.reactions[i+2].emoji == str(i)+"⃣":
+                            await self.add_reaction(msg, str(i+1)+"⃣")
+                for reaction in msg.reactions:
+                    msg = await self.get_message(msg.channel, msg.id)
+                    if reaction.emoji not in ["👈", "👉", "👆", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"]:
+                        listOfReactionUsers = await self.get_reaction_users(reaction, limit=100)
+                        for user in listOfReactionUsers:
+                            if user != self.user:
+                                await self.remove_reaction(msg, reaction.emoji, user)
+                return ""
+            except Exception as e:
+                print(e)
+                print("Something outside of my forces messed with this process.")
+                return ""
+        
+    async def _hold_musicdir_reaction(self, player, msg=None, usr=None):
+        reacted = await self.wait_for_reaction(user=usr, message=msg, timeout=60)
+        if not reacted:
+            await self.edit_message(msg, "I have ended this musicdir session due to inactivity.")
+            player.musicdir = False
+            await self._mess_with_reactions(player, msg, usr=player.musicdirCreator, RemoveAll=True)
+            return None
+        return await self._hold_musicdir_reaction(player, msg=msg, usr=usr)
+    async def _hold_musicdir(self, player, msg=None, usr=None):
+        received = await self.wait_for_message(author=usr, channel=msg.channel, timeout=60)
+        if not received:
+            await self.edit_message(msg, "I have ended this musicdir session due to inactivity.")
+            player.musicdir = False
+            await self._mess_with_reactions(player, msg, usr=player.musicdirCreator, RemoveAll=True)
+            return None
+        return await self._hold_musicdir(player, msg=msg, usr=usr)
+    async def _refresh_looper(self, player, msg=None, usr=None, skipwait=False):
+        if player.musicdir:
+            if not skipwait:
+                await asyncio.wait_for(asyncio.sleep(15), timeout=35, loop=self.loop)
+            try:
+                for i in range(len(msg.reactions)-3):
+                    msg = await self.get_message(msg.channel, msg.id)
+                    if msg.reactions[i+2] and msg.reactions[i+2].emoji != str(i+1)+"⃣":
+                        listOfReactionUsers = await self.get_reaction_users(msg.reactions[i+2], limit=100)
+                        for user in listOfReactionUsers:
+                            try:
+                                await self.remove_reaction(msg, msg.reactions[i+2].emoji, user)
+                            except:
+                                continue
+                        return await self._refresh_looper(player, msg=msg, usr=usr, skipwait=True)
+            except:
+                print("Failed to try to refresh the reactions.")
+    async def _build_musicdir(self, player, msg=None, usr=None, dir=""):
+        paf = dir
+        player.musicdirDir = dir
+        filesInDir = next(os.walk(paf))[2]
+        foldersInDir = next(os.walk(paf))[1]
+        dirstring = next(os.walk(paf))[0]
+        usableFilesInDir = []
+        for i in range(len(filesInDir)):
+            if filesInDir[i][-4:] in [".wav", ".mp3", "webm", ".m4a", ".mp4", ".ogg"]:
+                usableFilesInDir.append(filesInDir[i])
+        #finalmsg = "Use the reactions to navigate pages (if necessary).\nYou are in this directory: "+dirstring
+        finalmsg = "**You are in this directory**: "+dirstring
+        unusedFolders = []
+        unusedFiles = []
+        if len(foldersInDir) > 0:
+            finalmsg = finalmsg+"\n**Folders in this directory**:"
+        player.pagedict = {1:["",[],[]]}
+        linecount = 0
+        for fldr in foldersInDir:
+            linecount = linecount+1
+            if len(finalmsg) + len("\n"+fldr) + 500 > DISCORD_MSG_CHAR_LIMIT or linecount > 9:
+                unusedFolders.append(fldr)
+            else:
+                finalmsg = finalmsg + "\n**"+str(linecount)+".** "+fldr
+                player.pagedict[1][1].append(fldr)
+        if len(usableFilesInDir) > 0 and linecount < 10:
+            finalmsg = finalmsg + "\n**Files in this directory**:"
+        for file in usableFilesInDir:
+            linecount = linecount+1
+            if len(finalmsg) + len("\n"+file) + 500 > DISCORD_MSG_CHAR_LIMIT or linecount > 9:
+                unusedFiles.append(file)
+            else:
+                finalmsg = finalmsg + "\n**"+str(linecount)+".** "+file
+                player.pagedict[1][2].append(file)
+        player.pagedict[1][0] = finalmsg #[finalmsg, folders, files]
+        linecount = 1
+        if len(unusedFolders) > 0 or len(unusedFiles) > 0:
+            player.pagenum = 2
+            for x in unusedFolders:
+                try:
+                    player.pagedict[player.pagenum]
+                except:
+                    player.pagedict[player.pagenum] = ["",[],[]]
+                if len("\n".join(player.pagedict[player.pagenum][1])) + len("\n"+x) + 500 > DISCORD_MSG_CHAR_LIMIT or len(player.pagedict[player.pagenum][1]) == 9:
+                    player.pagenum = player.pagenum + 1
+                    linecount = 1
+                    player.pagedict[player.pagenum] = ["",[x],[]]
+                else:
+                    player.pagedict[player.pagenum][1].append(x)
+                    linecount = linecount+1
+            for x in unusedFiles:
+                try:
+                    player.pagedict[player.pagenum]
+                except:
+                    player.pagedict[player.pagenum] = ["",[],[]]
+                if len("\n".join(player.pagedict[player.pagenum][2])) + len("\n"+x) + 500 > DISCORD_MSG_CHAR_LIMIT or linecount > 9 or len(player.pagedict[player.pagenum][1]) + len(player.pagedict[player.pagenum][2]) == 9:
+                    player.pagenum = player.pagenum + 1
+                    linecount = 1
+                    player.pagedict[player.pagenum] = ["",[],[x]]
+                else:
+                    player.pagedict[player.pagenum][2].append(x)
+                    linecount = linecount+1
+            
+            time.sleep(0.3)
+            player.pagenum = 1
+            #await self._reaction_pager(player, msg=mainmessage, usr=author, dir=dir)
+            #await self._waiting_for_reaction(mainmessage, author)
+            finalmsg = "Use the reactions to navigate the pages. Bear with me, as sometimes the reactions get slow.\n**Page** 1/"+str(len(player.pagedict))+"\n"+finalmsg
+            player.pagedict[1][0] = finalmsg
+        curpageDict = dict()
+        i = 1
+        for x in player.pagedict[player.pagenum][1]:
+            curpageDict[i] = ["folder", x]
+            i = i+1
+        for x in player.pagedict[player.pagenum][2]:
+            curpageDict[i] = ["file", x]
+            i = i+1 
+        return curpageDict
+    async def cmd_mdnav(self, player, author, channel, message, server):
+        '''
+        Usage:
+            ^mdnav .
+            ^mdnav foldername
+            Using "." will go "up" a folder if there is a folder to go to.
+            Inputting a folder name which exists within the folder will navigate the directory to that folder.
+        '''
+        if not player.musicdir:
+            return Response("A session of musicdir must be in progress for this command to work.", delete_after=15)
+        if player.musicdirCreator != author:
+            return Response("You did not create this musicdir session.", delete_after=5)
+        params = message.content.strip().lower().split()
+        params.pop(0)
+        if len(params) == 0:
+            return Response("I require instructions for this command.", delete_after=10)
+        if params[0] == ".":
+            if player.musicdirDir not in ["C:\\Users\\Barinade\\Music", "C:\\Program Files (x86)\\StepMania 5\\Songs"]:
+                print(player.musicdirDir)
+                await self._build_musicdir(player, msg=player.musicdirMessage, dir=os.path.dirname(player.musicdirDir))
+                print(player.musicdirDir)
+            else:
+                return Response("I cannot go above this directory.", delete_after=10)
+        else:
+            listofFolders = set()
+            for k in player.pagedict:
+                for x in player.pagedict[k][1]:
+                    listofFolders.add(x.lower())
+            if " ".join(params).lower() in listofFolders:
+                player.musicdirDir = player.musicdirDir + "\\"+" ".join(params)
+                await self._build_musicdir(player, msg=player.musicdirMessage, dir=player.musicdirDir)
+            else:
+                return Response("I could not find that folder in this directory.", delete_after=10)
+        time.sleep(0.2)
+        mainmessage = player.musicdirMessage
+        player.musicdirMessage = await self.edit_message(mainmessage, player.pagedict[1][0])
+        await self.delete_message(message)
+        if len(player.pagedict) > 1:
+            try:
+                await self.add_reaction(mainmessage, "👈")
+                await self.add_reaction(mainmessage, "👉")
+            except:
+                print("The reactions already exist.")
+            try:
+                player.musicdirLoopTask.cancel()
+            except:
+                print("This task never happened.")
+            player.musicdirLoopTask = asyncio.ensure_future(self._hold_musicdir_reaction(player, msg=mainmessage, usr=author))
+        else:
+            try:
+                await self.remove_reaction(mainmessage, "👉", self.user)
+                await self.remove_reaction(mainmessage, "👈", self.user)
+            except:
+                print("The reactions already didn't exist.")
+            try:
+                player.musicdirLoopTask.cancel()
+            except:
+                print("This task never happened.")
+            player.musicdirLoopTask = asyncio.ensure_future(self._hold_musicdir(player, msg=mainmessage, usr=author))
+    async def cmd_mdplay(self, player, author, channel, message, server):
+        '''
+        Usage:
+            ^mdplay -R #
+            ^mdplay filename
+            The filename argument is optional.
+            If no filename is given, it picks a random file to queue into the playlist.
+            If a filename is given, it tries to queue it into the playlist.
+            If the -R flag is given, it picks # random files to queue into the playlist.
+            If no number is given with the -R flag, it picks 5.
+            Repeats may occur when picking random files.
+        '''
+        if not player.musicdir:
+            return Response("A session of musicdir must be in progress for this command to work.", delete_after=15)
+        if player.musicdirCreator != author:
+            return Response("You did not create this musicdir session.", delete_after=5)
+        params = message.content.strip().lower().split()
+        params.pop(0)
+        randumb = False
+        listofFiles = set()
+        for k in player.pagedict:
+            for x in player.pagedict[k][2]:
+                listofFiles.add(x.lower())
+        if len(params) == 0:
+            randumb = True
+        elif params[0] != "-r":
+            if " ".join(params).lower() in listofFiles:
+                filename = player.musicdirDir+"\\"+" ".join(params)
+                try:
+                    await player.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=" ".join(params), Filepath=filename, channel=channel, author=author)
+                except:
+                    return Response("The file doesn't seem to exist for some reason... Try something else.", delete_after=15)
+                return Response("I have queued that file.", delete_after=10)
+            else:
+                return Response("That file does not exist in this folder.", delete_after=10)
+        elif params[0] == "-r":
+            randumb = True
+        else:
+            return Response("What", delete_after=5)
+        #queue random.choice(listofFiles)
+        if randumb:
+            if len(params) == 1:
+                for _ in range(5):
+                    try:
+                        randomchoice = random.sample(listofFiles, 1)[0]
+                        filename = player.musicdirDir+"\\"+randomchoice
+                        await player.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=randomchoice, Filepath=filename, channel=channel, author=author)
+                    except:
+                        return Response("Something went wrong trying to queue a song randomly. The most likely cause is that there are no files to play in this folder.", delete_after=15)
+                return Response("I have queued 5 random files.", delete_after=10)
+            elif len(params) == 2:
+                try:
+                    iterations = int(float(params[1]))
+                    if iterations > 30:
+                        return Response("That's a pretty big number, there... Try something less than 30.", delete_after=10)
+                except:
+                    return Response("You did not enter a real number after the flag.", delete_after=10)
+                for _ in range(iterations):
+                    try:
+                        randomchoice = random.sample(listofFiles, 1)[0]
+                        filename = player.musicdirDir+"\\"+randomchoice
+                        await player.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=randomchoice, Filepath=filename, channel=channel, author=author)
+                    except:
+                        return Response("Something went wrong trying to queue a song randomly. The most likely cause is that there are no files to play in this folder.", delete_after=15)
+                return Response("I have queued "+str(iterations)+" random files.", delete_after=10)
+            else:
+                try:
+                    randomchoice = random.sample(listofFiles, 1)[0]
+                    filename = player.musicdirDir+"\\"+randomchoice
+                    await player.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=randomchoice, Filepath=filename, channel=channel, author=author)
+                except:
+                    return Response("Something went wrong trying to queue a song randomly. The most likely cause is that there are no files to play in this folder.", delete_after=15)
+                return Response("I have queued a random file.", delete_after=10)
+        
+        
+        
+        
+        
+    
+    
     @owner_only
-    async def cmd_tester(self, author, message, server, user_mentions, channel):
+    async def cmd_tester(self, player, author, permissions, message, server, user_mentions, channel):
         '''
         Test command.
         '''
         #print(discord.Member.roles)
-        try:
-            print(self.activityDict)
-            d = datetime.now()
-            d2 = datetime.now() - timedelta(days=365)
-            print(d2)
-            #await self.send_message(channel, "@poco0317")
-            #await self.send_message(channel, "@Robotic Overlord")
-            #await self.send_message(channel, server.roles[1].mention)
-            #print(datetime.now())
-            #print(datetime.now()+timedelta(minutes=45))
-            #print(datetime.now().hour)
-            #link = "http://www.urbandictionary.com/"
-            #f = requests.get(link, headers={"content-type":"text"})
-            #soup = bS(f.text, "html.parser")
-            #found = soup.body.find_all("content", "div", "href", "a", "data-defid")
-            #print(soup.body)
-            #print(found)
-            #found2 = soup.body.find_all("div", {"class":"ribbon"})
-            #print("THE FIRST ELEMENT: "+list(found2[0].children)[0].strip())    #POINTER TO DATE
-            #found3 = soup.body.find_all("div", {"class":"def-header"})
-            #print(found3)
-            #print("TEST")
-            #print(found3[0])
-            #link = "http://dictionary.com/wordoftheday/2017/3/29"
-            #f = requests.get(link, headers={"content-type":"text"})
-            #soup = bS(f.text, "html.parser")
-            #found = soup.body.find_all("li", {"class":"first"})
-            #print(found)
-            #found = soup.body.find_all("ol", {"class":"definition-list definition-wide-desktop-third definition-desktop-third definition-tablet-third"})
-            #print(found)
-            #if len(found) == 0:
-            #    print("None found")
-            #elif found[0] == None:
-            #    print("None contents.")
-            #for x in found[0].contents:
-            #    print(x.string)
-            #found = soup.body.find_all("ol", {"class":"definition-list definition-wide-desktop-third definition-desktop-third definition-tablet-first"})
-            #print(found[0])
-            #print(found[1])
-            #print(found[0].string)
-            #print(found[0].contents)
-            #print(found[0].contents[1].string)
-            #for x in found[0].contents:
-            #    if len(x.string) > 1:
-            #        await self.send_message(channel, x.string)
-            #print(found[1].string)
-            #print(list(found[0].children)[0])
-            #print(list(found3[0].children))
-            #print(list(list(found3[0].children)[1].children)[0].strip()) #POINTER TO WORD
-            #found4 = soup.body.find_all("div", {"class":"meaning"})
-            #found5 = soup.body.find_all("div", {"class":"example"})
-            #print(list(found4[0].children)[0].strip()) #pointer to definition
-            #print(list(found5[0].children)[0].strip()) #pointer to example usage
-            #link = "http://dictionary.com/wordoftheday/"+str(datetime.today().year)+"/"+str(datetime.today().month)+"/"+str(datetime.today().day)+"/"
-            #f = requests.get(link, headers={"content-type":"text"})
-            #soup = bS(f.text, "html.parser")
-            #found = soup.body.find_all("a", "uploaded")
-            #link1 = "http://www.urbandictionary.com/"
-            #f = requests.get(link1, headers={"content-type":"text"})
-            #soup = bS(f.text, "html.parser")
-            #found2 = soup.body.find_all("div", {"class":"ribbon"}) #date
-            #found3 = soup.body.find_all("div", {"class":"def-header"}) #word
-            #found4 = soup.body.find_all("div", {"class":"meaning"}) #definition
-            #found5 = soup.body.find_all("div", {"class":"example"}) #example
-            #await self.send_message(channel, "Urban Dictionary Word of the Day ("+list(found2[0].children)[0].strip()+"): "+list(list(found3[0].children)[1].children)[0].strip()+"\n**Definition**: "+list(found4[0].children)[0].strip()+"\n**Example**: "+list(found5[0].children)[0].strip())
-            #urboutput = "Urban Dictionary Word of the Day ("+list(found2[0].children)[0].strip()+"): "+list(list(found3[0].children)[1].children)[0].strip()+"\n**Definition**: "+list(found4[0].children)[0].strip()+"\n**Example**: "+list(found5[0].children)[0].strip()
-            #for x in found:
-            #    await self.send_message(channel, "The Dictionary.com Word of the Day is: "+x.contents[1].attrs["alt"]+"\n"+link+"\n\n"+urboutput)
-            #for x in found2[0].children:
-                #print(x)
-            #for x in found2:
-                #print(x)
-                #print(x.children.children)
-                #print("NEXT SERIES")
-                #for y in x.contents:
-                #    print(y)
-            
-            #print("test")
-            #print(found2)
-            #print(soup.get_text())
-        except Exception as e:
-            print(e)
+        #try:
+        #print(player.playlist)
+        #print(player.playlist.entries)
+        #print(len(player.playlist.entries))
+        #print(list(enumerate(player.playlist.entries, 0)))
+        #g = list(enumerate(player.playlist.entries, 0))
+        #print(g[0][1].url)
+        #print(g[0][1].title)
+        #print(g[0][1].duration)
+        #print(g[0][1].downloaded) #NOT IN THE OBJECT??
+        #print(g[0][1].filename)
+        #print(g[0][1].meta)
+        #print(g[0][1].expected_filename)
+        print("C:\\Program Files (x86)\\StepMania 5\\Songs")
+        print(os.path.dirname("C:\\Program Files (x86)\\StepMania 5\\Songs"))
+        
+        
+        
+        #await player.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle="Banana", Filepath="C:\\Users\\Barinade\\Music\\sm\\Dubstep\\adventure.mp3", channel=channel, author=author)
+        
+        
+        #for x in author.roles:
+        #    print(x.name)
+        #print(len(server.members))
+        #for role in server.roles:
+        #    if role.name == "Trove":
+        #        trole = role
+        #for m in server.members:
+        #    if trole in m.roles:
+        #        print(m.name)
+        #await self.send_message(channel, "@poco0317")
+        #await self.send_message(channel, "@Robotic Overlord")
+        #await self.send_message(channel, server.roles[1].mention)
+        #print(datetime.now())
+        #print(datetime.now()+timedelta(minutes=45))
+        #print(datetime.now().hour)
+        #link = "http://www.urbandictionary.com/"
+        #f = requests.get(link, headers={"content-type":"text"})
+        #soup = bS(f.text, "html.parser")
+        #found = soup.body.find_all("content", "div", "href", "a", "data-defid")
+        #print(soup.body)
+        #print(found)
+        #found2 = soup.body.find_all("div", {"class":"ribbon"})
+        #print("THE FIRST ELEMENT: "+list(found2[0].children)[0].strip())    #POINTER TO DATE
+        #found3 = soup.body.find_all("div", {"class":"def-header"})
+        #print(found3)
+        #print("TEST")
+        #print(found3[0])
+        #link = "http://dictionary.com/wordoftheday/2017/3/29"
+        #f = requests.get(link, headers={"content-type":"text"})
+        #soup = bS(f.text, "html.parser")
+        #found = soup.body.find_all("li", {"class":"first"})
+        #print(found)
+        #found = soup.body.find_all("ol", {"class":"definition-list definition-wide-desktop-third definition-desktop-third definition-tablet-third"})
+        #print(found)
+        #if len(found) == 0:
+        #    print("None found")
+        #elif found[0] == None:
+        #    print("None contents.")
+        #for x in found[0].contents:
+        #    print(x.string)
+        #found = soup.body.find_all("ol", {"class":"definition-list definition-wide-desktop-third definition-desktop-third definition-tablet-first"})
+        #print(found[0])
+        #print(found[1])
+        #print(found[0].string)
+        #print(found[0].contents)
+        #print(found[0].contents[1].string)
+        #for x in found[0].contents:
+        #    if len(x.string) > 1:
+        #        await self.send_message(channel, x.string)
+        #print(found[1].string)
+        #print(list(found[0].children)[0])
+        #print(list(found3[0].children))
+        #print(list(list(found3[0].children)[1].children)[0].strip()) #POINTER TO WORD
+        #found4 = soup.body.find_all("div", {"class":"meaning"})
+        #found5 = soup.body.find_all("div", {"class":"example"})
+        #print(list(found4[0].children)[0].strip()) #pointer to definition
+        #print(list(found5[0].children)[0].strip()) #pointer to example usage
+        #link = "http://dictionary.com/wordoftheday/"+str(datetime.today().year)+"/"+str(datetime.today().month)+"/"+str(datetime.today().day)+"/"
+        #f = requests.get(link, headers={"content-type":"text"})
+        #soup = bS(f.text, "html.parser")
+        #found = soup.body.find_all("a", "uploaded")
+        #link1 = "http://www.urbandictionary.com/"
+        #f = requests.get(link1, headers={"content-type":"text"})
+        #soup = bS(f.text, "html.parser")
+        #found2 = soup.body.find_all("div", {"class":"ribbon"}) #date
+        #found3 = soup.body.find_all("div", {"class":"def-header"}) #word
+        #found4 = soup.body.find_all("div", {"class":"meaning"}) #definition
+        #found5 = soup.body.find_all("div", {"class":"example"}) #example
+        #await self.send_message(channel, "Urban Dictionary Word of the Day ("+list(found2[0].children)[0].strip()+"): "+list(list(found3[0].children)[1].children)[0].strip()+"\n**Definition**: "+list(found4[0].children)[0].strip()+"\n**Example**: "+list(found5[0].children)[0].strip())
+        #urboutput = "Urban Dictionary Word of the Day ("+list(found2[0].children)[0].strip()+"): "+list(list(found3[0].children)[1].children)[0].strip()+"\n**Definition**: "+list(found4[0].children)[0].strip()+"\n**Example**: "+list(found5[0].children)[0].strip()
+        #for x in found:
+        #    await self.send_message(channel, "The Dictionary.com Word of the Day is: "+x.contents[1].attrs["alt"]+"\n"+link+"\n\n"+urboutput)
+        #for x in found2[0].children:
+            #print(x)
+        #for x in found2:
+            #print(x)
+            #print(x.children.children)
+            #print("NEXT SERIES")
+            #for y in x.contents:
+            #    print(y)
+        
+        #print("test")
+        #print(found2)
+        #print(soup.get_text())
+        #except Exception as e:
+        #    print(e)
     
     async def cmd_countinst(self, message, author, channel):
         '''
         Usage:
-            !countinst phrase any number of words long
+            ^countinst phrase any number of words long
             Checks bar's memory for how many times the phrase occurs.
         '''
         allargs = message.content.strip().split()
@@ -3165,7 +3584,7 @@ class MusicBot(discord.Client):
         #print(f.url)
     async def cmd_searchhttp(self, author, channel, message):
         '''
-        !searchhttp http(s)://link key tag tag tag tag ...[infinite tags]
+        ^searchhttp http(s)://link key tag tag tag tag ...[infinite tags]
         '''
         allargs = message.content.strip().split()
         allargs.pop(0)
@@ -3237,6 +3656,18 @@ class MusicBot(discord.Client):
         found3 = soup.body.find_all("div", {"class":"def-header"}) #word
         found4 = soup.body.find_all("div", {"class":"meaning"}) #definition
         found5 = soup.body.find_all("div", {"class":"example"}) #example
+        #print(found2)
+        #print(found3)
+        #print(found4)
+        #print(found5)
+        
+        #print(found2[0])
+        #print(found3[0])
+        #print(found4[0])
+        #print(found5[0])
+        
+        #print(list(found4[0].children))
+        
         
         str1 = ""       # definition
         for x in list(found4[0].children):
@@ -3295,23 +3726,25 @@ class MusicBot(discord.Client):
             return Response("Cannot increment more often than every 5 minutes.", delete_after=5)
         expired_martyr = 1
         self.martyrtimer()
-        f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/martyrs.txt", "r")
+        f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\martyrs.txt", "r")
         martyrs = f.read()
         f.close()
-        f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/martyrs.txt", "w")
+        f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\martyrs.txt", "w")
         f.write(str(int(martyrs)+1))
         f.close()
         if author.id == "104388993939951616":
             return await self.send_message(channel, "holy shit :joy: lmaoooo dude you fuckin fell for it "+str(int(martyrs)+1)+" times now :joy: :joy: :joy: :joy: :joy: :joy: :joy: :joy: :joy: :ok_hand:")
         return await self.send_message(channel, "LMAO Soof couldnt be more retarded :joy: he fuckin fell for it "+str(int(martyrs)+1)+" times now :joy: :joy: :joy: :joy: :joy: :joy: :joy: :joy: :joy: :joy: :ok_hand:")
-    async def cmd_nukelols(self, author, channel, message):
-        '''
-        How many times has Nuke said lol since 4/22/17?
-        '''
-        flol = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/lol.txt", "r")
-        lols = flol.read()
-        flol.close()
-        await self.send_message(channel, "Nuke has said lol "+lols.strip()+" times since 4/22/17.")
+    # async def cmd_nukelols(self, author, channel, message):
+        # '''
+        # How many times has Nuke said lol since 4/22/17?
+        # '''
+        # flol = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\lol.txt", "r")
+        # lols = flol.read()
+        # flol.close()
+        # await self.send_message(channel, "Nuke has said lol "+lols+" times since 4/22/17.")
+    
+        
     async def cmd_spam(self, author, server):
         '''
         Make the bot pm you 5 times
@@ -3321,7 +3754,7 @@ class MusicBot(discord.Client):
     async def cmd_lmgtfy(self, author, channel, message):
         '''
         Usage:
-            !lmgtfy phrase any number of words long
+            ^lmgtfy phrase any number of words long
             Spits out a lmgtfy link.
         '''
         msg = message.content.strip().split()
@@ -3344,7 +3777,7 @@ class MusicBot(discord.Client):
     async def cmd_clearchan(self, message, channel):
         '''
         Usage:
-            !clearchan x
+            ^clearchan x
             Clear the last x number of messages, up to 500 and 14 days old.
         '''
         params = message.content.strip().split()
@@ -3360,7 +3793,7 @@ class MusicBot(discord.Client):
     async def cmd_pushvc(self, message, channel, server):
         '''
         Usage:
-            !pushvc up/down[xINTEGER] voicechannel
+            ^pushvc up/down[xINTEGER] voicechannel
             Move every member in [voicechannel] up or down 1 channel.
             If given x, (upx5 for example), moves the members that many channels.
         '''
@@ -3422,10 +3855,11 @@ class MusicBot(discord.Client):
         for member in mlist:
             await self.move_member(member, channelto)
         return Response("I have attempted to move everyone in the desired direction, if anyone was there.", delete_after=15)
+        
     async def cmd_funkytown(self, message, channel, server, player):
         '''
         Usage:
-            !funkytown #
+            ^funkytown #
             Engage funkytown for a number of loops
         '''
         params = message.content.strip().split()
@@ -3453,7 +3887,7 @@ class MusicBot(discord.Client):
             except:
                 return Response("Something went wrong :(", delete_after=5)
         player._current_player = player._monkeypatch_player(player.voice_client.create_ffmpeg_player(
-            filename="/home/barinade/Desktop/Discordbots/FUNKYTOWN.mp3",
+            filename="C:\\Users\\Barinade\\Documents\\Discordbots\\FUNKYTOWN.mp3",
             before_options="-nostdin",
             options="-vn -b:a 128k",
             after=player._playback_finished(forced=True)
@@ -3463,13 +3897,14 @@ class MusicBot(discord.Client):
         player._current_player.start()
         for _ in range(funkytown):
             await self.move_member(server.me, vcChans[random.randint(0,len(vcChans)-1)])
-            time.sleep(2)
+            await asyncio.wait_for(asyncio.sleep(2), timeout=3, loop=self.loop)
         await self.move_member(server.me, summonchan)
         player.stop()
+        
     async def cmd_randvc(self, message, channel, server):
         '''
         Usage:
-            !randvc # voicechannel
+            ^randvc # voicechannel
             Uses a number and a voice channel to send everyone everywhere.
             Similar to pushvc except the place it sends everyone is random...
         '''
@@ -3505,7 +3940,7 @@ class MusicBot(discord.Client):
     async def cmd_goodtunes(self, message, player, channel, author, server, permissions):
         '''
         Usage:
-            !goodtunes [#] [-N, -A, -NA]
+            ^goodtunes [#] [-N, -A, -NA]
             Creates a playlist from the Good Tunes channel, randomly by default.
             If a number is given, it picks that number of songs unless it runs out of songs to choose from.
             If no number is given, it picks 5 songs.
@@ -3513,7 +3948,7 @@ class MusicBot(discord.Client):
             If -N is given, it picks the last 5 or last # songs, turning random off.
             If -A is given, it picks the entire list of song links found.
             If -NA or -AN is given, it picks the entire list of song links found in order.
-            The songs must download first to play; this command works exactly like 1play in that respect.
+            The songs must download first to play; this command works exactly like ^play in that respect.
         '''
         if player.tts == 1:
             return Response("TTS is playing. You cannot queue music when TTS is playing.", delete_after=5)
@@ -3524,7 +3959,10 @@ class MusicBot(discord.Client):
                 if m.id == author.id:
                     if cnl.id != player.voice_client.channel.id:
                         return Response("You must be in the same voice channel as the bot to queue music.", delete_after=10)
-        Mainmessage = await self.send_message(channel, "I'll be using this message to confirm when the playlist is done being made... You may stop it early by using !stopgt.\nFirst, I'm creating a list of songs.")
+        
+        
+        
+        Mainmessage = await self.send_message(channel, "I'll be using this message to confirm when the playlist is done being made... You may stop it early by using ^stopgt.\nFirst, I'm creating a list of songs.")
         linklist = []
         for chanel in server.channels:
             if chanel.id == "280862307956031488":
@@ -3601,7 +4039,7 @@ class MusicBot(discord.Client):
     async def cmd_stopgt(self, message, channel, author):
         '''
         Usage:
-            !stopgt
+            ^stopgt
             This can be used by anyone to immediately stop the queuing of a list of songs from the Good Tunes channel.
             Useful when you use the -A command with it, because it takes a pretty long time to finish queuing those songs.
         '''
@@ -3610,98 +4048,91 @@ class MusicBot(discord.Client):
             return Response("I stopped it. The playlist should be stable again.", delete_after=15)
         else:
             return Response("I can't stop what has not been started.", delete_after=10)
+        
+    # async def on_member_join(self, member):
+        # server = member.server
+        # #await self.replace_roles(member, server.roles[3])
+        # await self.send_message(self.modchan, "JOIN: "+member.name)
+        # await self.send_message(self.alertchan, "JOIN: "+member.name)
+        # await self.send_message(server.default_channel, "oh SHIT guys its a new member: "+member.name+" (check your private messages unless you're a bot)")
+        # self.newmemberlist.append(member.id)
+        # await self.send_message(member, "hey fam welcome to Ghost Divison :joy: \nThis server contains some 18+ content, but it's barred from new users via the Regular+ role. Ask an admin for it.\nPLEASE NOTE: you are not allowed to do anything on this server until you reply to this message (say anything you want, only I can see it)")
+        # fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "a")
+        # fl.write("\n"+member.id)
+        # fl.close()
+        # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\removed.txt", "a")
+        # curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
+        # #if int(curtime[3]) > 12:
+        # #    curtime[3] = str(int(curtime[3])-12)
+        # f.write("\nJoined: "+member.name+" at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
+        # f.close()
+    # async def on_member_ban(self, member):
+        # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\removed.txt", "a")
+        # curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
+        # #if int(curtime[3]) > 12:
+        # #    curtime[3] = str(int(curtime[3])-12)
+        # f.write("\nBANNED: "+member.name+" at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
+        # await self.send_message(self.modchan, "BANNED: "+member.name)
+        # await self.send_message(self.alertchan, "BANNED: "+member.name)
+        # f.close()
+    # async def on_member_remove(self, member):
+        # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\removed.txt", "a")
+        # curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
+        # #if int(curtime[3]) > 12:
+        # #    curtime[3] = str(int(curtime[3])-12)
+        # f.write("\nREMOVED or LEFT: "+member.name+" at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
+        # await self.send_message(self.modchan, "("+self.adminrole.mention+") LEFT/KICKED: "+member.name)
+        # await self.send_message(self.alertchan, "("+self.adminrole.mention+") LEFT/KICKED: "+member.name)
+        # f.close()
+    # async def on_member_update(self, before, after):
+        # #status-activity is made of dicts of UIDs:vars
+        # if before.status != after.status:
+            # d = datetime.now()
+            # if before.id not in self.activityDict:
+                # self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
+                # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activity.txt", "a")
+                # f.write(before.id+"@"+"@".join(self.activityDict[before.id]).strip())
+                # f.close()
+            # else:
+                # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activity.txt", "w")
+                # self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
+                # f.write("Line@Number@One")
+                # for k,v in self.activityDict.items():
+                    # if k != "Line":
+                        # f.write("\n"+k+"@"+"@".join(v).strip())
+                # f.close()
+    
+    
+    
+    
+    
+    
+        # elif before.nick != after.nick: #nick difference found
+            # if before.nick == None:
+                # await self.send_message(self.modchan, 'User '+before.name+' set their nickname to "'+after.nick+'"')
+                # await self.send_message(self.alertchan, 'NICKNAME CHANGE: User '+before.name+' set their nickname to "'+after.nick+'"')
+            # elif after.nick == None:
+                # await self.send_message(self.modchan, 'User '+before.name+' had their nickname removed.')
+                # await self.send_message(self.alertchan, 'NICKNAME CHANGE: User '+before.name+' had their nickname removed.')
+            # else:
+                # await self.safe_send_message(self.modchan, 'User '+before.name+' had their nickname changed from "'+before.nick+'" to "'+after.nick+'"')
+                # await self.safe_send_message(self.alertchan, 'NICKNAME CHANGE: User '+before.name+' had their nickname changed from "'+before.nick+'" to "'+after.nick+'"')
             
-    async def on_member_join(self, member):
-        server = member.server
-        #await self.replace_roles(member, server.roles[3])
-        await self.send_message(server.default_channel, "oh SHIT guys its a new member: "+member.name+" (check your private messages unless you're a bot)")
-        self.newmemberlist.append(member.id)
-        await self.send_message(member, "hey fam welcome to Ghost Divison :joy: \nThis server contains some 18+ content, but it's barred from new users via the Regular+ role. Ask an admin for it.\nPLEASE NOTE: you are not allowed to do anything on this server until you reply to this message (say anything you want, only I can see it)")
-        fl = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/idlist.txt", "a")
-        fl.write("\n"+member.id)
-        fl.close()
-        f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/removed.txt", "a")
-        curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
-        #if int(curtime[3]) > 12:
-        #    curtime[3] = str(int(curtime[3])-12)
-        try:
-            f.write("\nJoined: "+member.name+" ("+member.id+") at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
-        except:
-            f.write("\nJoined: "+member.id+" at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
-        f.close()
-    async def on_member_ban(self, member):
-        f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/removed.txt", "a")
-        curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
-        #if int(curtime[3]) > 12:
-        #    curtime[3] = str(int(curtime[3])-12)
-        try:
-            f.write("\nBANNED: "+member.name+" ("+member.id+") at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
-        except:
-            f.write("\nBANNED: "+member.id+" at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
-        await self.send_message(self.modchan, "BANNED: "+member.name)
-        await self.send_message(self.alertchan, "BANNED: "+member.name)
-        f.close()
-    async def on_member_remove(self, member):
-        f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/removed.txt", "a")
-        curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
-        #if int(curtime[3]) > 12:
-        #    curtime[3] = str(int(curtime[3])-12)
-        try:
-            f.write("\nREMOVED or LEFT: "+member.name+" ("+member.id+") at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))
-        except:
-            f.write("\nREMOVED or LEFT: "+member.id+" at "+curtime[1]+" "+curtime[2]+" "+curtime[0]+" "+":".join(curtime[3:]))            
-        await self.send_message(self.modchan, "("+self.adminrole.mention+") LEFT/KICKED: "+member.name)
-        await self.send_message(self.alertchan, "("+self.adminrole.mention+") LEFT/KICKED: "+member.name)
-        f.close()
-    async def on_member_update(self, before, after):
-        #status-activity is made of dicts of UIDs:vars
-        if before.status != after.status:
-            d = datetime.now()
-            if before.id not in self.activityDict:
-                self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
-                f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/activity.txt", "a")
-                f.write(before.id+"@"+"@".join(self.activityDict[before.id]).strip())
-                f.close()
-            else:
-                f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/activity.txt", "w")
-                self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
-                f.write("Line@Number@One")
-                for k,v in self.activityDict.items():
-                    if k != "Line":
-                        f.write("\n"+k+"@"+"@".join(v).strip())
-                f.close()
     
-    
-    
-    
-    
-    
-    
-        elif before.nick != after.nick: #nick difference found
-            if before.nick == None:
-                await self.send_message(self.modchan, 'User '+before.name+' set their nickname to "'+after.nick+'"')
-                await self.send_message(self.alertchan, 'NICKNAME CHANGE: '+before.name+' set their nickname to "'+after.nick+'"')
-            elif after.nick == None:
-                await self.send_message(self.modchan, 'User '+before.name+' had their nickname removed.')
-                await self.send_message(self.alertchan, 'NICKNAME CHANGE: '+before.name+' had their nickname removed.')
-            else:
-                await self.safe_send_message(self.modchan, 'User '+before.name+' had their nickname changed from "'+before.nick+'" to "'+after.nick+'"')
-                await self.safe_send_message(self.alertchan, 'NICKNAME CHANGE: '+before.name+' had their nickname changed from "'+before.nick+'" to "'+after.nick+'"')
-            
-        if before.roles != after.roles: #role difference found
-            blist = ""
-            for br1 in before.roles:
-                if br1.name == "@everyone":
-                    blist = blist+", `"+br1.name+"`"
-                else:
-                    blist = blist+", "+br1.name
-            alist = ""
-            for ar1 in after.roles:
-                if ar1.name == "@everyone":
-                    alist = alist+", `"+ar1.name+"`"
-                else:
-                    alist = alist+", "+ar1.name
-            await self.safe_send_message(self.modchan, "Role change on user: "+before.name+"\nRoles Before: "+blist+"\nRoles After: "+alist)
+        # if before.roles != after.roles: #role difference found
+            # blist = ""
+            # for br1 in before.roles:
+                # if br1.name == "@everyone":
+                    # blist = blist+", `"+br1.name+"`"
+                # else:
+                    # blist = blist+", "+br1.name
+            # alist = ""
+            # for ar1 in after.roles:
+                # if ar1.name == "@everyone":
+                    # alist = alist+", `"+ar1.name+"`"
+                # else:
+                    # alist = alist+", "+ar1.name
+            # await self.safe_send_message(self.modchan, "Role change on user: "+before.name+"\nRoles Before: "+blist+"\nRoles After: "+alist)
             
             
     def barstfutimer(self,tinsecond=300):
@@ -3754,7 +4185,7 @@ class MusicBot(discord.Client):
         timerun_barsaver = Timer(tinsecond, self.resetbarsaver)
         timerun_barsaver.start()
     def resetbarsaver(self):
-        f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/wordfreq.txt", "w")
+        f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\wordfreq.txt", "w")
         global freqdict
         for k,v in freqdict.items():
             f.write(k+","+str(v)+"\n")
@@ -3766,7 +4197,7 @@ class MusicBot(discord.Client):
     async def cmd_barpurge(self, message, author, channel):
         '''
         Usage:
-            !barpurge [purgeallitems] phrase any number of words long
+            ^barpurge [purgeallitems] phrase any number of words long
             Purge the phrase from bar's memory. Purgeallitems flag cleanses the entire memory.
         '''
         global freqlist
@@ -3793,7 +4224,7 @@ class MusicBot(discord.Client):
     async def cmd_bartts(self, player, message, author, channel, server):
         '''
         Usage:
-            !bartts [anything here]
+            ^bartts [anything here]
             Triggers a response from bar except in tts form.
         '''
         if not author.voice_channel:
@@ -3913,18 +4344,18 @@ class MusicBot(discord.Client):
         await self.send_message(channel, sndmsg)
         await self._tts_controller(player)
         #await self.send_message(channel, sndmsg) ##############activate tts here
-            
-            
+
+    
     async def cmd_tts(self, player, message, author, channel, server):
         '''
         Usage:
-            !tts words
+            ^tts words
             Uses DECtalk TTS in the voice channel the bot is in.
         '''
         #check here if ttsrunning is 1 (then queue if it is)
         await self.delete_message(message)
         if len(message.content.strip().split())<2:
-            return Response("Command usage: !tts blah blah blah", delete_after=5)
+            return Response("Command usage: ^tts blah blah blah", delete_after=5)
         if not author.voice_channel:
             return Response("You have to be in a voice channel to hear TTS.", delete_after=10)
         player.voice_client
@@ -3942,17 +4373,17 @@ class MusicBot(discord.Client):
         player.volume = 2
         if re.search("\[:t", " ".join(message.content.strip().split()[1:])) or re.search("\[:dv", " ".join(message.content.strip().split()[1:])) or re.search("\[:dial", " ".join(message.content.strip().split()[1:])):
             player.volume = 0.4
-        os.system('cd "/home/barinade/.wine/drive_c/Program Files (x86)/DECtalk/Us/"')
-        os.system('sudo --user=barinade wine say.exe -w /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav [:phoneme on] '+'"'+" ".join(message.content.strip().split()[1:])+'"')
+        os.system('cd "C:\\Program Files (x86)\\DECtalk\\Us\\"')
+        os.system('say -w test.wav [:phoneme on] '+'"'+" ".join(message.content.strip().split()[1:])+'"')
         player._current_player = player._monkeypatch_player(player.voice_client.create_ffmpeg_player(
-            filename="/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav",
+            filename="C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav",
             before_options="-nostdin",
             options="-vn -b:a 128k",
             after=player._playback_finished(forced=True)
         ))
         player._current_player.buff.volume = player.volume
         player.state = MusicPlayerState.STOPPED
-        process = subprocess.Popen(['ffmpeg', '-i', '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(['ffmpeg', '-i', 'C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = process.communicate()
         matches = re.search(r"Duration:\s{1}(?P<hours>\d+?):(?P<minutes>\d+?):(?P<seconds>\d+\.\d+?),", stdout.decode('utf-8'), re.DOTALL).groupdict()
         matches['hours'] = float(matches['hours'])*60*60
@@ -3963,17 +4394,18 @@ class MusicBot(discord.Client):
         print(player)
         await self._tts_controller(player)
     async def _tts_no_cmd(self, player, tts):
-        os.system('cd "/home/barinade/.wine/drive_c/Program Files (x86)/DECtalk/Us/"')
-        os.system('sudo --user=barinade wine say.exe -w /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav [:phoneme on] '+'"'+tts+'"')
+        print(tts)
+        os.system('cd "C:\\Program Files (x86)\\DECtalk\\Us\\"')
+        os.system('say -w test.wav [:phoneme on] '+'"'+tts+'"')
         player._current_player = player._monkeypatch_player(player.voice_client.create_ffmpeg_player(
-            filename="/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav",
+            filename="C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav",
             before_options="-nostdin",
             options="-vn -b:a 128k",
             after=player._playback_finished(forced=True)
         ))
         player._current_player.buff.volume = player.volume
         player.state = MusicPlayerState.STOPPED
-        process = subprocess.Popen(['ffmpeg', '-i', '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(['ffmpeg', '-i', 'C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = process.communicate()
         matches = re.search(r"Duration:\s{1}(?P<hours>\d+?):(?P<minutes>\d+?):(?P<seconds>\d+\.\d+?),", stdout.decode('utf-8'), re.DOTALL).groupdict()
         matches['hours'] = float(matches['hours'])*60*60
@@ -4017,9 +4449,9 @@ class MusicBot(discord.Client):
             # player.volume = 0.4
         # if nxtttsQuse == 1:
             # nxtttsQuse = 0
-            # os.system('cd "/home/barinade/.wine/drive_c/Program Files (x86)/DECtalk/Us/"')
-            # os.system('sudo --user=barinade wine say.exe -w /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav [:phoneme on] '+'"'+" ".join(nxtttsQ)+'"')
-            # process = subprocess.Popen(['ffmpeg', '-i', '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            # os.system('cd "C:\\Program Files (x86)\\DECtalk\\Us\\"')
+            # os.system('say -w test.wav [:phoneme on] '+'"'+" ".join(nxtttsQ)+'"')
+            # process = subprocess.Popen(['ffmpeg', '-i', 'C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             # stdout, stderr = process.communicate()
             # matches = re.search(r"Duration:\s{1}(?P<hours>\d+?):(?P<minutes>\d+?):(?P<seconds>\d+\.\d+?),", stdout.decode('utf-8'), re.DOTALL).groupdict()
             # matches['hours'] = float(matches['hours'])*60*60
@@ -4029,9 +4461,9 @@ class MusicBot(discord.Client):
             # nxtttsQ = []
             # await self.delete_message(message)
         # else:
-            # os.system('cd "/home/barinade/.wine/drive_c/Program Files (x86)/DECtalk/Us/"')
-            # os.system('sudo --user=barinade wine say.exe -w /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav [:phoneme on] '+'"'+" ".join(msg)+'"')
-            # process = subprocess.Popen(['ffmpeg', '-i', '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            # os.system('cd "C:\\Program Files (x86)\\DECtalk\\Us\\"')
+            # os.system('say -w test.wav [:phoneme on] '+'"'+" ".join(msg)+'"')
+            # process = subprocess.Popen(['ffmpeg', '-i', 'C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             # stdout, stderr = process.communicate()
             # matches = re.search(r"Duration:\s{1}(?P<hours>\d+?):(?P<minutes>\d+?):(?P<seconds>\d+\.\d+?),", stdout.decode('utf-8'), re.DOTALL).groupdict()
             # matches['hours'] = float(matches['hours'])*60*60
@@ -4041,7 +4473,7 @@ class MusicBot(discord.Client):
             # nxtttsQ = []
             # await self.delete_message(message)
         # try:
-            # await player.pray(_continue=False, filename="/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav")
+            # await player.pray(_continue=False, filename="C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav")
         # except:
             # print("ignoring errors")
             # #exit(1)
@@ -4062,8 +4494,8 @@ class MusicBot(discord.Client):
         # if re.search("\[:t", " ".join(msg)) or re.search("\[:dv", " ".join(msg)) or re.search("\[:dial", " ".join(msg)):
             # player.volume = 0.3
         # os.system('cd "C:\\Program Files (x86)\\DECtalk\\'+msg[0]+'\\"')
-        # os.system('sudo --user=barinade wine say.exe -w /home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav [:phoneme on] '+'"'+" ".join(msg[1:])+'"')
-        # process = subprocess.Popen(['ffmpeg', '-i', '/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        # os.system('say -w test.wav [:phoneme on] '+'"'+" ".join(msg[1:])+'"')
+        # process = subprocess.Popen(['ffmpeg', '-i', 'C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         # stdout, stderr = process.communicate()
         # matches = re.search(r"Duration:\s{1}(?P<hours>\d+?):(?P<minutes>\d+?):(?P<seconds>\d+\.\d+?),", stdout.decode('utf-8'), re.DOTALL).groupdict()
         # matches['hours'] = float(matches['hours'])*60*60
@@ -4072,7 +4504,7 @@ class MusicBot(discord.Client):
         # self.ttstimekeeper(tinsecond=lengthoftime)
         # await self.delete_message(message)
         # try:
-            # await player.pray(_continue=False, filename="/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/test.wav")
+            # await player.pray(_continue=False, filename="C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav")
         # except:
             # print("ignoring errors")
             
@@ -4099,11 +4531,10 @@ class MusicBot(discord.Client):
                 if x.id == "264837364415725568":
                     modchannel = x
             await self.send_message(modchannel, "A new invite was created recently by "+latestNEWinv.inviter.name+" and will expire in "+str(latestNEWinv.max_age)+" seconds. (0 means infinite)")
-            await self.send_message(self.alertchan, "NEW INVITE: by "+latestNEWinv.inviter.name+" will expire in "+str(latestNEWinv.max_age)+" seconds. (0 means infinite)")
+            await self.send_message(self.alertchan, "NEW INVITE: A new invite was created recently by "+latestNEWinv.inviter.name+" and will expire in "+str(latestNEWinv.max_age)+" seconds. (0 means infinite)")
             self.invitelists[srvr.name] = await self.invites_from(srvr)
         elif chknum < len(self.invitelists[srvr.name]):
             print("ALERT: Someone deleted an invite. Reconstructing the invite list.")
-            await self.send_message(self.alertchan, "DELETED INVITE: An invite has been deleted either manually or by time expiration.")
             self.invitelists[srvr.name] = await self.invites_from(srvr)
         
     def _wordofthedayloop(self, curtime, srvr):
@@ -4163,7 +4594,7 @@ class MusicBot(discord.Client):
             found3 = soup.body.find_all("div", {"class":"def-header"}) #word
             found4 = soup.body.find_all("div", {"class":"meaning"}) #definition
             found5 = soup.body.find_all("div", {"class":"example"}) #example
-            
+                
             str1 = ""       # definition
             for x in list(found4[0].children):
                 #print(type(x))
@@ -4231,8 +4662,8 @@ class MusicBot(discord.Client):
     async def cmd_roll(self, message, author, channel):
         '''
         Usage:
-            !roll [How many dice]d[Number of sides] [+ Number added to die roll]
-            Roll an x sided die y times and add z to it each time. Example: !roll 1d20. Z is optional.
+            ^roll [How many dice]d[Number of sides] [+ Number added to die roll]
+            Roll an x sided die y times and add z to it each time. Example: ^roll 1d20. Z is optional.
         '''
         finalmsg = ""
         adder = 0
@@ -4241,7 +4672,7 @@ class MusicBot(discord.Client):
         random.seed()
         msgparams = " ".join(msgparams).split("d")
         if len(msgparams) != 2 and len(msgparams) != 3:
-            return Response("There is an issue with your parameters. Try again using the correct format: !roll xdy [+z]", delete_after=20)
+            return Response("There is an issue with your parameters. Try again using the correct format: ^roll xdy [+z]", delete_after=20)
         msgparamsfinal = [msgparams[0]]+msgparams[1].split("+")
         msgparamsfinal[0] = msgparamsfinal[0].strip()
         msgparamsfinal[1] = msgparamsfinal[1].strip()
@@ -4249,7 +4680,7 @@ class MusicBot(discord.Client):
             msgparamsfinal[0] = int(msgparamsfinal[0])
             msgparamsfinal[1] = int(msgparamsfinal[1])
         except:
-            return Response("You tried so hard and got so far. Try again using the correct format: !roll xdy [+z]",  delete_after=20)
+            return Response("You tried so hard and got so far. Try again using the correct format: ^roll xdy [+z]",  delete_after=20)
         if len(msgparamsfinal) > 2:
             msgparamsfinal[2] = msgparamsfinal[2].strip()
             msgparamsfinal[2] = int(msgparamsfinal[2])
@@ -4285,7 +4716,7 @@ class MusicBot(discord.Client):
     async def cmd_msgblock(self, message, channel, channel_mentions):
         '''
         Usage:
-            !msgblock [number of seconds] [#channelname]
+            ^msgblock [number of seconds] [#channelname]
             Blocks all messages by everyone except mods and admins in the channel.
             If msgblock is already in effect for the channel, no matter the parameters, the block ends.
         '''
@@ -4322,7 +4753,7 @@ class MusicBot(discord.Client):
     async def cmd_linkblock(self, message, channel, channel_mentions):
         '''
         Usage:
-            !linkblock [number of seconds] [#channelname]
+            ^linkblock [number of seconds] [#channelname]
             Blocks all messages containing links by everyone except mods and admins in the channel.
             If linkblock is already in effect for the channel, no matter the parameters, the block ends.
         '''
@@ -4356,14 +4787,14 @@ class MusicBot(discord.Client):
     async def cmd_mute(self, server, channel, message, author, user_mentions):
         '''
         Usage:
-            !mute @user
+            ^mute @user
             Adds @user to a role which overrides all other roles which has the effect of muting @user from every channel on the server.
             Also as a side effect restricts access to nsfw channels temporarily.
             This command supports multiple users. @user mention in the message is scraped and added to the mute role.
             It will return a list of users which are already muted if they are muted.
         '''
         if len(user_mentions) == 0:
-            return Response("You didn't even target a user. Try !mute @user", delete_after=10)
+            return Response("You didn't even target a user. Try ^mute @user", delete_after=10)
         mutefaillist = []
         muterole = None
         for role in server.roles:
@@ -4385,12 +4816,12 @@ class MusicBot(discord.Client):
     async def cmd_unmute(self, server, channel, message, author, user_mentions):
         '''
         Usage:
-            !umute @user
+            ^umute @user
             Removes @user from the mute role.
             Supports a list of @users.
         '''
         if len(user_mentions) == 0:
-            return Response("You didn't even target a user. Try !unmute @user", delete_after=10)
+            return Response("You didn't even target a user. Try ^unmute @user", delete_after=10)
         mutefaillist = []
         muterole = None
         for role in server.roles:
@@ -4412,7 +4843,7 @@ class MusicBot(discord.Client):
     async def cmd_activity(self, server, channel, message, author, user_mentions):
         '''
         Usage:
-            !activity @user
+            ^activity @user
             Checks the activity for a user as logged by the bot.
             This monitors away, online, do not disturb, and offline activity.
             The time difference given is formatted as: Days, Hours:Minutes:Seconds.
@@ -4452,10 +4883,10 @@ class MusicBot(discord.Client):
     async def cmd_poll(self, message, channel, author):
         '''
         Usage:
-            !poll [number of minutes] "Poll Question"
-            !vote Answer
+            ^poll [number of minutes] "Poll Question"
+            ^vote Answer
             Starts a poll for a number of minutes.
-            !pollstop stops the poll.
+            ^pollstop stops the poll.
         '''
         params = message.content.split(" ")
         params.pop(0)
@@ -4472,12 +4903,12 @@ class MusicBot(discord.Client):
             lengthoftime = 300
             #print(e)
         if len(params) == 0:
-            return Response('Try !poll [number of minutes] "Poll Question"', delete_after=15)
+            return Response('Try ^poll [number of minutes] "Poll Question"', delete_after=15)
         pollquestion = " ".join(params)
         
         embed = discord.Embed(title=pollquestion, colour=discord.Colour(0xc27c0e), description="Answers:", timestamp=message.timestamp)
         
-        embed.set_author(name="Poll! Use !vote to vote.")
+        embed.set_author(name="Poll! Use ^vote to vote.")
         authav = author.avatar_url
         if author.avatar_url == None:
             authav = author.default_avatar_url
@@ -4493,7 +4924,7 @@ class MusicBot(discord.Client):
             if poll[2] == chan:
                 embed = poll[1]
                 nuembed = discord.Embed(title=embed.title, color=embed.color, description=embed.description, timestamp=embed.timestamp + timedelta(minutes=tinseconds/60))
-                nuembed.set_author(name="This poll has ended! Use !poll to start another.")
+                nuembed.set_author(name="This poll has ended! Use ^poll to start another.")
                 nuembed.set_footer(text="Expired at", icon_url=embed.footer.icon_url)
                 await self.send_message(chan, "The poll has ended!", embed=nuembed)
                 return self.polls.pop(i)
@@ -4501,7 +4932,7 @@ class MusicBot(discord.Client):
     async def cmd_vote(self, message, channel, author):
         '''
         Usage:
-            !vote [answer]
+            ^vote [answer]
             Vote for something in the current channel's poll.
             If the option doesn't exist, a new choice is made under that name.
         '''
@@ -4539,7 +4970,7 @@ class MusicBot(discord.Client):
             vtstr = vtstr+"\n"+k+": "+str(v)
         vtstr.strip()
         nuembed = discord.Embed(title=embed.title, color=embed.color, description="Answers:"+vtstr, timestamp=embed.timestamp)
-        nuembed.set_author(name="Poll! Use !vote to vote.")
+        nuembed.set_author(name="Poll! Use ^vote to vote.")
         nuembed.set_footer(text=embed.footer.text, icon_url=embed.footer.icon_url)
         await self.edit_message(self.polls[pi][5], embed=nuembed)
         self.polls[pi][1] = nuembed
@@ -4547,7 +4978,7 @@ class MusicBot(discord.Client):
     async def cmd_pollstop(self, channel, author):
         '''
         Usage:
-            !pollstop
+            ^pollstop
             Stop the poll running in the channel
         '''
         for poll in self.polls:
@@ -4555,20 +4986,198 @@ class MusicBot(discord.Client):
                 self.polls.pop(self.polls.index(poll))
                 return await self.send_message(channel, "Poll stopped.")
         await self.send_message(channel, "I couldn't find a poll running in this channel.")
+
+    
+    
+    # async def cmd_quote(self, channel, message):
+        # '''
+        # Usage:
+            # ^quote [#]
+            # Pulls a random quote from the quotes list.
+            # If a number is given, pulls that quote from the list.
+        # '''
+        # params = message.content.strip().split()
+        # params.pop(0)
+        # if len(params) == 0:
+            # quoteNum = random.randint(0,len(self.quotelist)-1)
+            # quote = self.quotelist[quoteNum]
+            # quoteNum = quoteNum+1
+        # else:
+            # try:
+                # quote = self.quotelist[int(float(params[0]))-1]
+                # quoteNum = int(float(params[0]))
+            # except:
+                # return Response("There are "+str(len(self.quotelist))+" quotes and that is outside the range allowed... or you didn't use a number.", delete_after=15)
+        # quoted = await self.get_user_info(quote[1])
+        # quoter = await self.get_user_info(quote[2])
+        # quoted = quoted.name
+        # quoter = quoter.name
+        # realquote = quote[3]
+        # realquote = re.sub("!NEWLINE!", "\n", realquote)
+        # if quoter == quoted:
+            # twoNames = False
+        # else:
+            # twoNames = True
+        # if twoNames:
+            # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(quoteNum)+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Added by**: "+quoter+"\n**Quote from**: "+quoted+"\n**Quote**:\n"+realquote)
+        # else:
+            # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(quoteNum)+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Quote by**: "+quoted+"\n**Quote**:\n"+realquote)
+        # embed.set_footer(text="Produced with a little more care than usual, I hope it worked", icon_url=self.user.avatar_url)
+        # delete_later = await self.send_message(channel, embed=embed)
+        # await self.delete_message_later(delete_later, 30)
+        # await self.delete_message_later(message, 1)
+        
+    # async def cmd_addquote(self, server, channel, message, author, user_mentions):
+        # '''
+        # Usage:
+            # ^addquote insert whatever text you want here
+            # ^addquote @user whatever text you want here
+            # ^addquote [Message ID]
+            # Adds a quote to the end of our quotebook.
+            # If @user is given, it attributes the quote to them.
+            # If only a message ID is given, it attributes the quote to you and quotes the linked ID.
+            # Use ^lastquote to see it in after you're done.
+        # '''
+        # params = message.content.split(" ")
+        # params.pop(0)
+        # foundMessage = None
+        # if len(params) == 0:
+            # return Response("You cannot add an empty quote.", delete_after=10)
+        # if len(params) == 1 and user_mentions:
+            # return Response("You cannot add an empty quote.", delete_after=10)
+        # if len(params) == 1 and re.search("[\d]{10,}", params[0]):
+            # for channel in server.channels:
+                # try:
+                    # foundMessage = await self.get_message(channel, params[0])
+                # except:
+                    # foundMessage = foundMessage
+            # if not foundMessage:
+                # return Response("I couldn't find a message in any channels on this server with that ID.", delete_after=10)
+            # params[0] = foundMessage.content
+            # attchmnts = set()
+            # if foundMessage.attachments:
+                # for attachment in foundMessage.attachments:
+                    # attchmnts.add(attachment["url"])
+                # params[0] = params[0] + "\n" + "\n".join(attchmnts)
+            # quoted = foundMessage.author.id
+            # quoter = author.id
+            # time = re.search("(\d\d\d\d-\d\d-\d\d [\d]+:[\d]+:[\d]+)", str(foundMessage.timestamp)).group(0)
+        # if user_mentions and params[0].startswith("<@") and not foundMessage:
+            # params[0] = " ".join(params[1:])
+            # quoted = user_mentions[0].id
+            # quoter = author.id
+        # else:
+            # if not foundMessage:
+                # params[0] = " ".join(params)
+                # quoted = author.id
+                # quoter = quoted
+        # try:
+            # quote = re.sub("\n", "!NEWLINE!", params[0])
+            # if not foundMessage:
+                # time = re.search("(\d\d\d\d-\d\d-\d\d [\d]+:[\d]+:[\d]+)", str(message.timestamp)).group(0)
+        # except:
+            # return Response("Something went very wrong with parsing your quote. It probably had something to do with the time or date.", delete_after=10)
+        # quoteadd = [time, quoted, quoter, quote]
+        # self.quotelist.append(quoteadd)
+        # fq = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\quotes.txt", "a")
+        # try:
+            # fq.write("\n"+";;:;".join(quoteadd))
+        # except:
+            # Response("Something went wrong adding the quote to the text file.", delete_after=5)
+        # fq.close()
+        # return Response("Added that as quote number "+str(len(self.quotelist))+".", delete_after=20)
+    # async def cmd_delquote(self, channel, message, author):
+        # '''
+        # Usage:
+            # ^delquote #
+            # Removes the quote # from the list.
+            # There is no undoing this action.
+        # '''
+        # params = message.content.strip().split()
+        # params.pop(0)
+        # if len(params) == 0:
+            # return Response("I need a number indicating which quote to remove.", delete_after=10)
+        # try:
+            # quoteNum = int(float(params[0]))-1
+        # except:
+            # return Response("I cannot turn that into a number. Try again.", delete_after=10)
+        # self.quotelist.pop(quoteNum)
+        # fq = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\quotes.txt", "w")
+        # fq.write(";;:;".join(self.quotelist[0]))
+        # for quote in self.quotelist[1:]:
+            # fq.write("\n"+";;:;".join(quote))
+        # fq.close()
+        # return Response("I have deleted quote number "+str(quoteNum+1)+".")
+    # async def cmd_findquote(self, channel, message, author):
+        # '''
+        # Usage:
+            # ^findquote phrase to search for
+            # Searches the list of quotes for the phrase you enter.
+        # '''
+        # params = message.content.strip().split()
+        # params.pop(0)
+        # if len(params) == 0:
+            # return Response("I need a phrase to search for.", delete_after=10)
+        # for quote in self.quotelist:
+            # if " ".join(params).lower() in re.sub("!NEWLINE!", "\n", quote[3]).lower():
+                # quoted = await self.get_user_info(quote[1])
+                # quoter = await self.get_user_info(quote[2])
+                # quoted = quoted.name
+                # quoter = quoter.name
+                # realquote = quote[3]
+                # realquote = re.sub("!NEWLINE!", "\n", realquote)
+                # if quoter == quoted:
+                    # twoNames = False
+                # else:
+                    # twoNames = True
+                # if twoNames:
+                    # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(self.quotelist.index(quote))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Added by**: "+quoter+"\n**Quote from**: "+quoted+"\n**Quote**:\n"+realquote)
+                # else:
+                    # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(self.quotelist.index(quote))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Quote by**: "+quoted+"\n**Quote**:\n"+realquote)
+                # embed.set_footer(text="Produced with a little more care than usual, I hope it worked", icon_url=self.user.avatar_url)
+                # delete_later = await self.send_message(channel, embed=embed)
+                # await self.delete_message_later(message, 30)
+                # return await self.delete_message_later(delete_later, 1)
+        # return Response("I couldn't find that phrase in any quotes.", delete_after=20)
+    # async def cmd_lastquote(self, channel, message):
+        # '''
+        # Usage:
+            # ^lastquote
+            # Returns the last quote added to the list.
+        # '''
+        # quote = self.quotelist[len(self.quotelist)-1]
+        # quoted = await self.get_user_info(quote[1])
+        # quoter = await self.get_user_info(quote[2])
+        # quoted = quoted.name
+        # quoter = quoter.name
+        # realquote = quote[3]
+        # realquote = re.sub("!NEWLINE!", "\n", realquote)
+        # if quoter == quoted:
+            # twoNames = False
+        # else:
+            # twoNames = True
+        # if twoNames:
+            # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(len(self.quotelist))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Added by**: "+quoter+"\n**Quote from**: "+quoted+"\n**Quote**:\n"+realquote)
+        # else:
+            # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(len(self.quotelist))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Quote by**: "+quoted+"\n**Quote**:\n"+realquote)
+        # embed.set_footer(text="Produced with a little more care than usual, I hope it worked", icon_url=self.user.avatar_url)
+        # delete_later = await self.send_message(channel, embed=embed)
+        # await self.delete_message_later(message, 30)
+        # return await self.delete_message_later(delete_later, 30)
         
     async def cmd_remind(self, channel, user_mentions, author, message):
         '''
         Usage:
-            !remind me/@user x m/h/d Message
+            ^remind me/@user x m/h/d Message
             Remind you or @user in x minutes, hours, or days of the Message you input.
             Note: This will not work if the bot is offline. If the reminder passes and the bot comes online, the reminder will be sent.
         '''
         params = message.content.strip().split()
         params.pop(0)
         if len(params) == 0:
-            return Response("You can't remind nobody of nothing never. Try !remind me/`@user` x m/h/d Message.", delete_after=15)
+            return Response("You can't remind nobody of nothing never. Try ^remind me/`@user` x m/h/d Message.", delete_after=15)
         if params[0].lower() != "me" and not(re.search("@", params[0])):
-            return Response("You can't remind nobody of something. Try !remind me/`@user` etc... ", delete_after=15)
+            return Response("You can't remind nobody of something. Try ^remind me/`@user` etc... ", delete_after=15)
         try:
             if int(float(params[1])) < 0 or int(float(params[1])) > 1000:
                 return Response("You can't remind someone of something in the past or so far in the future. Try another number.", delete_after=15)
@@ -4593,7 +5202,7 @@ class MusicBot(discord.Client):
             expires = datetime.now() + timedelta(days=int(params[1]))
         
         msg = " ".join(params[3:])
-        f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/reminders.txt", "a")
+        f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\reminders.txt", "a")
         try:
             f.write("\n"+remindtargID+"@!@"+str(expires.month)+"/"+str(expires.day)+"/"+str(expires.year)+" "+str(expires.hour)+":"+str(expires.minute)+"@!@"+msg)
         except:
@@ -4635,10 +5244,10 @@ class MusicBot(discord.Client):
         except Exception as e:
             print("I FAILED TO FIND A MEMBER IN THE REMIND LIST.")
             print(e)
-        fr = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/reminders.txt", "r")
+        fr = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\reminders.txt", "r")
         lines = fr.readlines()
         fr.close()
-        fr = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/reminders.txt", "w")
+        fr = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\reminders.txt", "w")
         self.reminderlist.pop(self.reminderlist.index(rlist))
         fr.write("Line @!@ One.")
         for j in range(len(self.reminderlist)):
@@ -4648,7 +5257,7 @@ class MusicBot(discord.Client):
     async def cmd_bigavatar(self, channel, author):
         '''
         Usage:
-            !bigavatar
+            ^bigavatar
             Returns a direct link to the highest res of your avatar I can find.
         '''
         if author.avatar_url:
@@ -4659,7 +5268,7 @@ class MusicBot(discord.Client):
     async def cmd_counthistory(self, message, channel, author):
         '''
         Usage:
-            !counthistory a phrase of words
+            ^counthistory a phrase of words
             Returns a number of times a phrase occurred in the last 10,000 messages in the channel.
         '''
         params = message.content.split()
@@ -4677,96 +5286,269 @@ class MusicBot(discord.Client):
                 count = count+msg.content.lower().count(phrase)
         await self.edit_message(editlater, "Found: "+str(count)+" not including you using it right there.")
         #gc.collect()
-        
-    async def on_message_edit(self, before, after):
-        if before.content != after.content and before.author.id not in ["261738076404056064", "303440133850660864", "240206755156590592"]:
-            d = difflib.Differ()
-            txt1 = before.content.strip().splitlines(1)
-            txt2 = after.content.strip().splitlines(1)
-            result = list(d.compare(txt1,txt2))
-            s = difflib.SequenceMatcher(lambda x: x == " ", before.content, after.content)
-            blox = s.get_matching_blocks()
-            changeBeforeInsert = []
-            changeAfterInsert = []
-            changeBeforeDelete = []
-            changeAfterDelete = []
-            #changeAfterLeave = []
-            changeBeforeLeave = []
-            changeBeforeReplace = []
-            changeAfterReplace = []
-            for opcode in s.get_opcodes():
-                print(opcode)
-                if opcode[0] == "insert":
-                    changeBeforeInsert.append((opcode[1],opcode[2]))
-                    changeAfterInsert.append((opcode[3],opcode[4]))
-                if opcode[0] == "delete":
-                    changeBeforeDelete.append((opcode[1],opcode[2]))
-                    changeAfterDelete.append((opcode[3],opcode[4]))
-                if opcode[0] == "equal":
-                    changeBeforeLeave.append((opcode[1],opcode[2]))
-                    #changeAfterLeave.append((opcode[3],opcode[4]))
-                if opcode[0] == "replace":
-                    changeBeforeReplace.append((opcode[1],opcode[2]))
-                    changeAfterReplace.append((opcode[3],opcode[4]))
-            finalmsg = "\n"
-            for i  in range(len(changeBeforeLeave)):
-                finalmsg = finalmsg + "\nLeave '"+before.content[changeBeforeLeave[i][0]:changeBeforeLeave[i][1]]+"'."
-            for i in range(len(changeBeforeInsert)):
-                if len(before.content[changeBeforeInsert[i][0]:changeBeforeInsert[i][1]]) == 0:
-                    finalmsg = finalmsg + "\nInsert '"+after.content[changeAfterInsert[i][0]:changeAfterInsert[i][1]]+"'"
-            for i in range(len(changeBeforeReplace)):
-                    finalmsg = finalmsg + "\nReplace '"+before.content[changeBeforeReplace[i][0]:changeBeforeReplace[i][1]]+"'\n\tWith: '"+after.content[changeAfterReplace[i][0]:changeAfterReplace[i][1]]+"'"
-            for i in range(len(changeBeforeDelete)):
-                if changeAfterDelete[i][1] == len(before.content):
-                    finalmsg = finalmsg + "\nDelete '"+after.content[changeAfterDelete[i][0]:changeAfterDelete[i][1]]+"' from 'after.'"
-                else:
-                    finalmsg = finalmsg + "\nDelete '"+before.content[changeBeforeDelete[i][0]:changeBeforeDelete[i][1]]+"' from 'before.'"
-            if before.attachments:
-                attachmntMsg = "containing attachments"
-            else:
-                attachmntMsg = ""
-            await self.send_message(self.alertchan, "EDIT: Message "+attachmntMsg+" by "+before.author.name+" in "+before.channel.name+" was edited at "+str(after.edited_timestamp)+".\nBefore: ```"+re.sub("`", "", before.content)+"``` Changes:```"+finalmsg+"```After:```"+re.sub("`", "", after.content)+"``` \n--------------")
-            f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/editedmsg.txt", "a")
-            f.write("\n"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", after.author.name)+" at "+str(after.edited_timestamp)+"\nBefore:\t"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", before.content)+"\nAfter:\t"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", after.content))
-            f.close()
-        for x in before.server.channels:
-            if x.id == "238521805227294720":
-                pinchannel = x
-        if before.pinned and after.pinned or not(before.pinned) and not(after.pinned):
-            return ""
-        elif not(before.pinned) and after.pinned:
-            attchmnts = ""
-            if after.attachments:
-                attchmnts = after.attachments[0]["url"]
-            if after.channel.id != "271151253197815808":
-                await self.send_message(pinchannel, after.author.name + " in "+after.channel.name+" on date/time: "+str(after.timestamp)+"UTC:\n"+ before.content+ "\n"+attchmnts)
-                await self.unpin_message(after)
+    
+    async def on_reaction_add(self, reaction, user):
+        if reaction.message.server in self.musicdirInstanceDict:
+            if reaction.emoji in ["👈", "👉", "👆", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"] and user != self.user:
+                playerinst = self.musicdirInstanceDict[reaction.message.server]
+                if reaction.message.id == playerinst.musicdirMessage.id:
+                    await self.remove_reaction(reaction.message, reaction.emoji, user)
+                if user == playerinst.musicdirCreator and playerinst.musicdir:
+                    if reaction.emoji == "👈":
+                        direction = "Left"
+                    if reaction.emoji == "👉":
+                        direction = "Right"
+                    if reaction.emoji == "👆":
+                        direction = "Up"
+                    if reaction.emoji == "1⃣":
+                        direction = 1
+                    if reaction.emoji == "2⃣":
+                        direction = 2
+                    if reaction.emoji == "3⃣":
+                        direction = 3
+                    if reaction.emoji == "4⃣":
+                        direction = 4
+                    if reaction.emoji == "5⃣":
+                        direction = 5
+                    if reaction.emoji == "6⃣":
+                        direction = 6
+                    if reaction.emoji == "7⃣":
+                        direction = 7
+                    if reaction.emoji == "8⃣":
+                        direction = 8
+                    if reaction.emoji == "9⃣":
+                        direction = 9
+                    skipEdit = False
+                    if direction == "Left":
+                        playerinst.pagenum = playerinst.pagenum - 1
+                        if playerinst.pagenum < 1:
+                            playerinst.pagenum = len(playerinst.pagedict)
+                    elif direction == "Right":
+                        playerinst.pagenum = playerinst.pagenum + 1
+                        if playerinst.pagenum > len(playerinst.pagedict):
+                            playerinst.pagenum = 1
+                    elif direction == None:
+                        return ""
+                    elif direction == "Up":
+                        if playerinst.musicdirDir not in ["C:\\Users\\Barinade\\Music", "C:\\Program Files (x86)\\StepMania 5\\Songs"]:
+                            playerinst.pagenum = 1
+                            await self._build_musicdir(playerinst, msg=playerinst.musicdirMessage, dir=os.path.dirname(playerinst.musicdirDir))
+                        else:
+                            delete_in_five = await self.send_message(playerinst.musicdirMessage.channel, "You are not allowed to leave this directory.")
+                            await self.delete_message_later(delete_in_five, 10)
+                    else:
+                        curpageDict = dict()
+                        i = 1
+                        for x in playerinst.pagedict[playerinst.pagenum][1]:
+                            curpageDict[i] = ["folder", x]
+                            i = i+1
+                        for x in playerinst.pagedict[playerinst.pagenum][2]:
+                            curpageDict[i] = ["file", x]
+                            i = i+1
+                        if direction > len(curpageDict):
+                            return ""
+                        else:
+                            if curpageDict[direction][0] == "folder":
+                                await self._build_musicdir(playerinst, msg=playerinst.musicdirMessage, dir=playerinst.musicdirDir+"\\"+curpageDict[direction][1])
+                            else:
+                                await playerinst.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=curpageDict[direction][1], Filepath=playerinst.musicdirDir+"\\"+curpageDict[direction][1], channel=playerinst.musicdirMessage.channel, author=playerinst.musicdirCreator)
+                                delete_later = await self.send_message(reaction.message.channel, "I queued file "+str(direction)+".")
+                                await self.delete_message_later(delete_later, time=15)
+                                skipEdit = True
+                    curpageDict = dict()
+                    i = 1
+                    for x in playerinst.pagedict[playerinst.pagenum][1]:
+                        curpageDict[i] = ["folder", x]
+                        i = i+1
+                    for x in playerinst.pagedict[playerinst.pagenum][2]:
+                        curpageDict[i] = ["file", x]
+                        i = i+1            
+                    if playerinst.pagenum == 1 and not skipEdit:
+                        msg = await self.edit_message(reaction.message, playerinst.pagedict[playerinst.pagenum][0])
+                        playerinst.musicdirMessage = msg
+                        await self._mess_with_reactions(playerinst, msg=playerinst.musicdirMessage, Pagelimit=len(curpageDict))
+                        await self._mess_with_reactions(playerinst, msg=playerinst.musicdirMessage, Remove=False, Pagelimit=len(curpageDict))
+                    elif playerinst.pagenum != 1 and not skipEdit:
+                        addstr = "Use the reactions to navigate the pages. Bear with me, as sometimes the reactions get slow.\n**Page** "+str(playerinst.pagenum)+"/"+str(len(playerinst.pagedict))+"\n**You are in this directory**: "+playerinst.musicdirDir
+                        g = 0
+                        if len(playerinst.pagedict[playerinst.pagenum][1]) > 0:
+                            folders = ""
+                            for i in range(len(playerinst.pagedict[playerinst.pagenum][1])):
+                                folders = folders+"\n**"+str(i+1)+"**. "+playerinst.pagedict[playerinst.pagenum][1][i]
+                            addstr = addstr+"\n**Folders in this directory**:\n"+folders.strip()
+                            g = i+1
+                        if len(playerinst.pagedict[playerinst.pagenum][2]) > 0:
+                            files = ""
+                            for i in range(len(playerinst.pagedict[playerinst.pagenum][2])):
+                                files = files+"\n**"+str(i+g+1)+"**. "+playerinst.pagedict[playerinst.pagenum][2][i]
+                            addstr = addstr+"\n**Files in this directory**:\n"+files.strip()
+                        msg = await self.edit_message(reaction.message, addstr)
+                        playerinst.musicdirMessage = msg
+                        await self._mess_with_reactions(playerinst, msg=playerinst.musicdirMessage, Pagelimit=len(curpageDict))
+                        await self._mess_with_reactions(playerinst, msg=playerinst.musicdirMessage, Remove=False, Pagelimit=len(curpageDict))
+                    else:
+                        playerinst.musicdirMessage = reaction.message
+            elif reaction.emoji in ["👈", "👉", "👆", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"] and user == self.user:
+                try:
+                    playerinst = self.musicdirInstanceDict[reaction.message.server]
+                    curpageDict = dict()
+                    i = 1
+                    for x in playerinst.pagedict[playerinst.pagenum][1]:
+                        curpageDict[i] = ["folder", x]
+                        i = i+1
+                    for x in playerinst.pagedict[playerinst.pagenum][2]:
+                        curpageDict[i] = ["file", x]
+                        i = i+1
+                    direction = 0
+                    if reaction.emoji == "1⃣":
+                        direction = 1
+                    if reaction.emoji == "2⃣":
+                        direction = 2
+                    if reaction.emoji == "3⃣":
+                        direction = 3
+                    if reaction.emoji == "4⃣":
+                        direction = 4
+                    if reaction.emoji == "5⃣":
+                        direction = 5
+                    if reaction.emoji == "6⃣":
+                        direction = 6
+                    if reaction.emoji == "7⃣":
+                        direction = 7
+                    if reaction.emoji == "8⃣":
+                        direction = 8
+                    if reaction.emoji == "9⃣":
+                        direction = 9
+                    if direction > len(curpageDict):
+                        return await self.remove_reaction(reaction.message, reaction.emoji, self.user)
+                except:
+                    print("Something went wrong when working with the bot reacting to itself.")
+                
+    
+    
+    
+    ## vv msg edit-pin block
+    #async def on_message_edit(self, before, after):
+        # if before.content != after.content and before.author.id not in ["261738076404056064", "303440133850660864", "240206755156590592"]:
+            # d = difflib.Differ()
+            # txt1 = before.content.strip().splitlines(1)
+            # txt2 = after.content.strip().splitlines(1)
+            # result = list(d.compare(txt1,txt2))
+            # s = difflib.SequenceMatcher(lambda x: x == " ", before.content, after.content)
+            # blox = s.get_matching_blocks()
+            # changeBeforeInsert = []
+            # changeAfterInsert = []
+            # changeBeforeDelete = []
+            # changeAfterDelete = []
+            # #changeAfterLeave = []
+            # changeBeforeLeave = []
+            # changeBeforeReplace = []
+            # changeAfterReplace = []
+            # for opcode in s.get_opcodes():
+                # print(opcode)
+                # if opcode[0] == "insert":
+                    # changeBeforeInsert.append((opcode[1],opcode[2]))
+                    # changeAfterInsert.append((opcode[3],opcode[4]))
+                # if opcode[0] == "delete":
+                    # changeBeforeDelete.append((opcode[1],opcode[2]))
+                    # changeAfterDelete.append((opcode[3],opcode[4]))
+                # if opcode[0] == "equal":
+                    # changeBeforeLeave.append((opcode[1],opcode[2]))
+                    # #changeAfterLeave.append((opcode[3],opcode[4]))
+                # if opcode[0] == "replace":
+                    # changeBeforeReplace.append((opcode[1],opcode[2]))
+                    # changeAfterReplace.append((opcode[3],opcode[4]))
+            # finalmsg = "\n"
+            # for i  in range(len(changeBeforeLeave)):
+                # finalmsg = finalmsg + "\nLeave '"+before.content[changeBeforeLeave[i][0]:changeBeforeLeave[i][1]]+"'."
+            # for i in range(len(changeBeforeInsert)):
+                # if len(before.content[changeBeforeInsert[i][0]:changeBeforeInsert[i][1]]) == 0:
+                    # finalmsg = finalmsg + "\nInsert '"+after.content[changeAfterInsert[i][0]:changeAfterInsert[i][1]]+"'"
+            # for i in range(len(changeBeforeReplace)):
+                    # finalmsg = finalmsg + "\nReplace '"+before.content[changeBeforeReplace[i][0]:changeBeforeReplace[i][1]]+"'\n\tWith: '"+after.content[changeAfterReplace[i][0]:changeAfterReplace[i][1]]+"'"
+            # for i in range(len(changeBeforeDelete)):
+                # if changeAfterDelete[i][1] == len(before.content):
+                    # finalmsg = finalmsg + "\nDelete '"+after.content[changeAfterDelete[i][0]:changeAfterDelete[i][1]]+"' From 'before.'"
+                # else:
+                    # finalmsg = finalmsg + "\nDelete '"+before.content[changeBeforeDelete[i][0]:changeBeforeDelete[i][1]]+"' From 'after.'"
+            # await self.send_message(self.alertchan, "EDIT: by "+before.author.name+" in "+before.channel.name+" at "+str(after.edited_timestamp)+".\nBefore:\n```"+re.sub("`", "", before.content)+"```\nChanges:\n```"+finalmsg+"```\nAfter:```"+re.sub("`", "", after.content)+"```")
+                    
+            # pprint(result)
+            # for i in range(len(result)):
+                # result[i] = result[i].strip()
+            # await self.send_message(self.alertchan, "EDIT: by "+before.author.name+" in "+before.channel.name+" at "+str(after.edited_timestamp)+". Changes:\n```"+"\n".join(result)+"```")
+            #await self.send_message(self.alertchan, "EDIT: by "+before.author.name+" in "+before.channel.name+".\nTimestamp: "+str(after.edited_timestamp)+".\n\nBefore: "+before.content+"\n\nAfter: "+after.content)
+            # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\editedmsg.txt", "a")
+            # f.write("\n"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", after.author.name)+" at "+str(after.edited_timestamp)+"\nBefore:\t"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", before.content)+"\nAfter:\t"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", after.content))
+            # f.close()
+        # #print(before.system_content)
+        # #print(after.system_content)
+        # for x in before.server.channels:
+            # if x.id == "238521805227294720":
+                # pinchannel = x
+        # if before.pinned and after.pinned or not(before.pinned) and not(after.pinned):
+            # return ""
+        # elif not(before.pinned) and after.pinned:
+            # attchmnts = ""
+            # if after.attachments:
+                # attchmnts = after.attachments[0]["url"]
+            # if after.channel.id != "271151253197815808":
+                # await self.send_message(pinchannel, after.author.name + " in "+after.channel.name+" on date/time: "+str(after.timestamp)+"UTC:\n"+ before.content+ "\n"+attchmnts)
+                # await self.unpin_message(after)
+        # if before.pinned and after.pinned or not(before.pinned) and not(after.pinned):
+            # return ""
+        # elif not(before.pinned) and after.pinned:
+            # await asyncio.wait_for(asyncio.sleep(1), timeout=3, loop=self.loop)
+            # if self.Pinner:
+                # Pinner = self.Pinner
+                # self.Pinner = None
+                # if Pinner == "Can't find them":
+                    # Pinner = before.author
+                # attchmnts = []
+                # if after.attachments:
+                    # for attchmnt in after.attachments:
+                        # attchmnts.append(attchmnt["url"])
+                # quotewords = before.content
+                # if len(attchmnts) > 0:
+                    # quotewords = quotewords + "!NEWLINE!" + "!NEWLINE!".join(attchmnts)
+                # quote = [re.search("(\d\d\d\d-\d\d-\d\d [\d]+:[\d]+:[\d]+)", str(before.timestamp)).group(0), before.author.id, Pinner.id, quotewords]
+                # self.quotelist.append(quote)
+                # fq = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\quotes.txt", "a")
+                # try:
+                    # fq.write("\n"+";;:;".join(quote))
+                # except:
+                    # print("Failure in adding quote to text.")
+                # fq.close()
+                # await self.send_message(before.channel, "A message in this channel was pinned by "+Pinner.name+". I have attempted to move the pin to the quotes list.")
+                # await self.unpin_message(after)
+                
+                
         #print(after.embeds)
         #for x in after.attachments:
         #    print(x["url"])
-    async def on_message_delete(self, message):
-        if message.type != discord.MessageType.pins_add:
-            if not (message.content.startswith("^") or message.content.startswith("&") or message.content.startswith("!")):
-                if message.author.id not in ["261738076404056064", "303440133850660864", "240206755156590592"]:
-                    attachmentlist = []
-                    if message.attachments:
-                        for attachment in message.attachments:
-                            attachmentlist.append(attachment["url"])
-                    if len(attachmentlist) > 0:
-                        attachments = "\n".join(attachmentlist)
-                    else:
-                        attachments = ""
-                    attachments = "\n"+attachments
-                    await self.send_message(self.alertchan, "DELETE: by "+message.author.name+" in "+message.channel.name+".\nTimestamp: "+str(message.timestamp)+".\n\nContents:\n"+message.content+""+attachments+"\n--------------")
-                    f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/deletedmsg.txt", "a")
-                    f.write("\n"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message.author.name)+" at "+str(message.timestamp)+"\n\t"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message.content))
-                    f.close()
+        ## ^^ msg edit-pin block
+        
+    ## vv msg delete block
+    # async def on_message_delete(self, message):
+        # if message.type != discord.MessageType.pins_add:
+            # if not (message.content.startswith("^") or message.content.startswith("&") or message.content.startswith("!")):
+                # if message.author.id not in ["261738076404056064", "303440133850660864", "240206755156590592"]:
+                    # attachmentlist = []
+                    # if message.attachments:
+                        # for attachment in message.attachments:
+                            # attachmentlist.append(attachment["url"])
+                    # if len(attachmentlist) > 0:
+                        # attachments = "\n".join(attachmentlist)
+                    # else:
+                        # attachments = ""
+                    #await self.send_message(self.alertchan, "DELETE: by "+message.author.name+" in "+message.channel.name+".\nTimestamp: "+str(message.timestamp)+".\n\n"+message.content+"\n"+attachments)
+                    # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\deletedmsg.txt", "a")
+                    # f.write("\n"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message.author.name)+" at "+str(message.timestamp)+"\n\t"+re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message.content))
+                    # f.close()
+    ## ^^ msg delete block
         
     async def on_message(self, message):
         await self.wait_until_ready()
         if message.channel.id == "297850406992609281":
-            return ""
-        if message.channel.id == "313822977043070987":
             return ""
         message_content = message.content.strip()
         global expired_cdt
@@ -4798,263 +5580,282 @@ class MusicBot(discord.Client):
                 if re.search("http", message_content) or re.search("ftp", message_content) or message.attachments:
                     await self.delete_message(message)
         
-        if message.type == discord.MessageType.pins_add:
-            await self.delete_message(message)
-            await self.send_message(message.channel, "A message from this channel has been pinned. I have attempted to move the pin to the pins channel.")
-        if message.mention_everyone:
-            user_permissions = self.permissions.for_user(message.author)
-            if user_permissions.name != "Admin" and user_permissions.name != "Moderator" and user_permissions.name != "Owner (auto)":
-                if re.search("@everyone", message_content):
-                    await self.delete_message(message)
-                    await self.send_message(message.channel, "Sorry, you can't mention everyone at once like that. Try `@here` instead.")
+        ## vv pin/@everyone mention block
+        # if message.type == discord.MessageType.pins_add:
+            # # await self.delete_message(message)
+            # #await self.send_message(message.channel, message.system_content)
+            # name = re.sub("pinned a message to this channel.", "", message.system_content)
+            # #await self.send_message(message.channel, name.strip())
+            # members = self.get_all_members()
+            # for member in members:
+                # if member.name == name.strip():
+                    # self.Pinner = member
+            # if self.Pinner == None:
+                # self.Pinner == "Can't find them"
+            # await self.delete_message(message)
+            
+            #await self.send_message(message.channel, "A message from this channel has been pinned. I have attempted to move the pin to the pins channel.")
+        # if message.mention_everyone:
+            # user_permissions = self.permissions.for_user(message.author)
+            # if user_permissions.name != "Admin" and user_permissions.name != "Moderator" and user_permissions.name != "Owner (auto)":
+                # if re.search("@everyone", message_content):
+                    # await self.delete_message(message)
+                    # await self.send_message(message.channel, "Sorry, you can't mention everyone at once like that. Try `@here` instead.")
+                    ## ^^ pin/@everyone mention block
         
             
             
         print(message_content)
         #print(self.messages)
-        if message.channel.is_private and message.author.id != "303440133850660864":
-            print("Private channel found for message. Checking against new member list")
-            if message.author.id in self.newmemberlist:
-                for x in self.servers:
-                    if x.name == "Ghost Division":
-                        srvr = x
-                for mbr in x.members:
-                    if mbr.id == message.author.id:
-                        roler = mbr
-                for r in srvr.roles:
-                    if r.name == "Regular":
-                        regrole = r
-                await self.replace_roles(roler, regrole)
-                fl = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/idlist.txt", "r")
-                lines = fl.readlines()
-                fl.close()
-                fl = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/idlist.txt", "w")
-                for line in lines:
-                    if not(re.search(message.author.id, line)):
-                        #if line != message.author.id:
-                        fl.write(line)
-                await self.send_message(message.channel, "Enjoy your stay.")
-                return self.newmemberlist.pop(self.newmemberlist.index(message.author.id))
-            else:
-                return await self.send_message(message.channel, "There is no reason you should pm me right now.")
-        try:
-            for x in message.server.channels:
-                if x.id == "264837364415725568":
-                    modchannel = x
-            if "faggot" in message_content.lower() and message.author.id == "204801115974402050":
-                await self.send_message(modchannel, "'faggot' detected in channel "+message.channel.name)
-                await self.send_message(self.alertchan, "'faggot' detected in channel "+message.channel.name)
-            if "lol" == message_content.lower() and message.author.id == "204801115974402050":
-                flol = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/lol.txt", "r")
-                lols = flol.read()
-                flol.close()
-                flol = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/lol.txt", "w")
-                flol.write(str(int(lols)+1))
-                flol.close()
-                
-        except:
-            print("The bot received a PM from someone.")
+        
+        ## vv faggot/newmember pm block
+        # if message.channel.is_private and message.author.id != "240206755156590592":
+            # print("Private channel found for message. Checking against new member list")
+            # if message.author.id in self.newmemberlist:
+                # for x in self.servers:
+                    # if x.name == "Ghost Division":
+                        # srvr = x
+                # for mbr in x.members:
+                    # if mbr.id == message.author.id:
+                        # roler = mbr
+                # await self.replace_roles(roler, srvr.roles[3])
+                # fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "r")
+                # lines = fl.readlines()
+                # fl.close()
+                # fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "w")
+                # for line in lines:
+                    # if not(re.search(message.author.id, line)):
+                        # #if line != message.author.id:
+                        # fl.write(line)
+                # await self.send_message(message.channel, "Enjoy your stay.")
+                # return self.newmemberlist.pop(self.newmemberlist.index(message.author.id))
+            # else:
+                # return await self.send_message(message.channel, "There is no reason you should pm me right now.")
+        # try:
+            # for x in message.server.channels:
+                # if x.id == "264837364415725568":
+                    # modchannel = x
+            # if "faggot" in message_content.lower() and message.author.id == "204801115974402050":
+                # await self.send_message(modchannel, "'faggot' detected in channel "+message.channel.name)
+                # await self.send_message(self.alertchan, "'faggot' detected in channel "+message.channel.name)
+            # if "lol" == message_content.lower() and message.author.id == "204801115974402050":
+                # flol = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/lol.txt", "r")
+                # lols = flol.read()
+                # flol.close()
+                # flol = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/lol.txt", "w")
+                # flol.write(str(int(lols)+1))
+                # flol.close()
+        # except:
+            # print("The bot received a PM from someone.")
+            ## ^^ faggot/newmember pm block
             
         msgwords = message_content.split()
         capped = 0
-        if message_content == message_content.upper() and re.search("[A-Z]", message_content):
-            if message.author.name == self.cap_msg_nick:
-                self.cap_msg_in_a_row = self.cap_msg_in_a_row + 1
-                if self.cap_msg_in_a_row > 3:
-                    await self.send_message(modchannel, "All caps spam by "+self.cap_msg_nick+" detected in channel "+message.channel.name+" (x"+str(self.cap_msg_in_a_row)+")")
-                    await self.send_message(self.alertchan, "CAPS SPAM: "+self.cap_msg_nick+" in "+message.channel.name+" (x"+str(self.cap_msg_in_a_row)+")")
-            else:
-                self.cap_msg_nick = message.author.name
-                self.cap_msg_in_a_row = 1
-        else:
-            if message.author.name == self.cap_msg_nick:
-                self.cap_msg_in_a_row = 0
-                self.cap_msg_nick = ""
+        
+        ## vv caps spam block
+        # if message_content == message_content.upper() and re.search("[A-Z]", message_content):
+            # if message.author.name == self.cap_msg_nick:
+                # self.cap_msg_in_a_row = self.cap_msg_in_a_row + 1
+                # if self.cap_msg_in_a_row > 3:
+                    # await self.send_message(modchannel, "All caps spam by "+self.cap_msg_nick+" detected in channel "+message.channel.name+" (x"+str(self.cap_msg_in_a_row)+")")
+                    # await self.send_message(self.alertchan, " CAPS SPAM: "+self.cap_msg_nick+" in "+message.channel.name+" (x"+str(self.cap_msg_in_a_row)+")")
+                    
+            # else:
+                # self.cap_msg_nick = message.author.name
+                # self.cap_msg_in_a_row = 1
+        # else:
+            # if message.author.name == self.cap_msg_nick:
+                # self.cap_msg_in_a_row = 0
+                # self.cap_msg_nick = ""
+                
+                ## ^^ caps spam block
+                
+                
     #generally accepted sentence format: s v or "implied you" predicate     
         global barquiet
         global freqdict
         global freqlist
         global barsaver
-        if (message_content.lower().startswith("bar ") or message_content.lower().startswith("forcebar") or message_content.lower().startswith("bar, ") or message_content.lower().startswith("barbar")) and not message_content.startswith(self.config.command_prefix) and message.author != self.user:
-            #wom pull and spit actions here
-            global baruse
-            if baruse == "stop":
-                return ""
-            baruse = "stop"
-            self.barusetimer()
+        ## vv bar block
+        ## vv bar block
+        # if (message_content.lower().startswith("bar ") or message_content.lower().startswith("forcebar") or message_content.lower().startswith("bar, ") or message_content.lower().startswith("barbar")) and not message_content.startswith(self.config.command_prefix) and message.author != self.user:
+            # #wom pull and spit actions here
+            # global baruse
+            # if baruse == "stop":
+                # return ""
+            # baruse = "stop"
+            # self.barusetimer()
             
-            #f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/wordfreq.txt", "r+")
-            msgwords = re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message_content).split()
-            forced = 0
-            #if msgwords[0] == "forcebar" and message.author.id == "104461925009608704":
-            #    forced = 1
-            #if forced == 0:
-            #    f.close()
-            #    return ""
-            msgwords.pop(0)
-            if msgwords[0] == "awaken" and message.author.id == "104461925009608704" and barquiet == 1:
-                barquiet = 0
-                global timerun
-                timerun.cancel()
-                #f.close()
-                return await self.send_message(message.channel, "I awaken.")
-            if barquiet == 1 and forced == 0:
-                #f.close()
-                return ""
-            if (msgwords[0] == "stfu" or msgwords[0] == "quiet") and barquiet == 0:
-                barquiet = 1
-                try:
-                    if int(msgwords[1])>0:
-                        self.barstfutimer(int(msgwords[1]))
-                        #f.close()
-                        return await self.send_message(message.channel, "bye for "+msgwords[1]+" seconds")
-                    self.barstfutimer()
-                    #return await self.send_message(message.channel, "bye for 300 seconds")
-                    #f.close()
-                    return ""
-                except:
-                    self.barstfutimer()
-                    #return await self.send_message(message.channel, "bye for 300 seconds")
-                    #f.close()
-                    return ""
+            # #f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\wordfreq.txt", "r+")
+            # msgwords = re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message_content).split()
+            # forced = 0
+            # #if msgwords[0] == "forcebar" and message.author.id == "104461925009608704":
+            # #    forced = 1
+            # #if forced == 0:
+            # #    f.close()
+            # #    return ""
+            # msgwords.pop(0)
+            # if msgwords[0] == "awaken" and message.author.id == "104461925009608704" and barquiet == 1:
+                # barquiet = 0
+                # global timerun
+                # timerun.cancel()
+                # #f.close()
+                # return await self.send_message(message.channel, "I awaken.")
+            # if barquiet == 1 and forced == 0:
+                # #f.close()
+                # return ""
+            # if (msgwords[0] == "stfu" or msgwords[0] == "quiet") and barquiet == 0:
+                # barquiet = 1
+                # try:
+                    # if int(msgwords[1])>0:
+                        # self.barstfutimer(int(msgwords[1]))
+                        # #f.close()
+                        # return await self.send_message(message.channel, "bye for "+msgwords[1]+" seconds")
+                    # self.barstfutimer()
+                    # #return await self.send_message(message.channel, "bye for 300 seconds")
+                    # #f.close()
+                    # return ""
+                # except:
+                    # self.barstfutimer()
+                    # #return await self.send_message(message.channel, "bye for 300 seconds")
+                    # #f.close()
+                    # return ""
             
-            tmpmsgwrds = msgwords.copy()
-            for i in range(len(msgwords)):
-                if tmpmsgwrds[i].startswith("http") or tmpmsgwrds[i].startswith("www."):
-                    msgwords.remove(tmpmsgwrds[i])
-            wordsphrase = list()
-            nxtwrphr = ""
-            if len(msgwords) > 2:
-                for w in msgwords:
-                    if random.randint(1,10) > 3:
-                        if nxtwrphr == "":
-                            nxtwrphr = w
-                        else:
-                            nxtwrphr = nxtwrphr + " " + w
-                    else:
-                        if nxtwrphr == "":
-                            wordsphrase.append(w)
-                        else:
-                            wordsphrase.append(nxtwrphr)
-                            nxtwrphr = w
-                if nxtwrphr != "":
-                    wordsphrase.append(nxtwrphr)
-                    nxtwrphr = ""
-            else:
-                wordsphrase = msgwords.copy()
-            for w in wordsphrase:
-                if w in freqdict:
-                    freqdict[w] = str(int(freqdict[w]) + 1)
-                else:
-                    freqdict[w] = "1"
-                freqlist.append(w)
-            #for k,v in freqdict.items():
-            #    f.write(k+","+str(v)+"\n")
-            #f.close()
-            #if barsaver != 1:
-            #    self.barmemorysavetimer()
-            
-            
-            
-            
-            nxtmsg = list()
-            incmsg = ""
-            verbs = ["is", "should", "be", "should be", "isn't", "may be", "can", "may", "could be", "would be", "has", "gets", "is"]
-            namelist = ["tox", "poco", "soof", "arteth", "arty", "cody", "mar", "mario", "john", "tails", "guner", "vexx", "redd", "ukrainian", "atanga", "signis", "lazarus", "nansae", "ronwe", "emeris", "relay", "rythoka", "bae", "baewulf", "miri", "demo", "mpra2"]
-            if msgwords[0].lower() in namelist and len(msgwords) == 1:
-                sndmsg = msgwords[0]
-                sndmsg = sndmsg+" "+verbs[random.randint(0,len(verbs)-1)]
-                for _ in range(random.randint(1,10)):
-                    sndmsg = sndmsg+" "+freqlist[random.randint(0,len(freqlist)-1)]
-                return await self.send_message(message.channel, sndmsg)
-            if msgwords[0].lower() in namelist and len(msgwords) > 1:
-                sndmsg = msgwords[0]
-                if msgwords[1] in verbs:
-                    sndmsg = sndmsg+" "+msgwords[1]
-                added = 0
-                for _ in range(random.randint(1,10)):
-                    sndmsg = sndmsg+" "+freqlist[random.randint(0,len(freqlist)-1)]
-                    if random.randint(1,10) > 3 and added == 0 and msgwords[1] in verbs:
-                        sndmsg = sndmsg+" "+" ".join(msgwords[2:])
-                        added = 1
-                    elif random.randint(1,10) > 3 and added == 0 and msgwords[1] not in verbs:
-                        sndmsg = sndmsg+" "+" ".join(msgwords[1:])
-                        added = 1
-                return await self.send_message(message.channel, sndmsg)
-            for _ in range(random.randint(1,random.randint(3,13))):
-                nxtmsg.append(freqlist[random.randint(0,len(freqlist)-1)])
-            nwmsg = 1
-            for x in nxtmsg:
-                if random.randint(1,10) > 3 and nwmsg == 1 and len(wordsphrase) > 1:
-                    incmsg = incmsg + " " + wordsphrase[random.randint(0,len(wordsphrase)-1)]
-                    nwmsg = 0
-                if x in punctmrks:
-                    incmsg = incmsg + x
-                else:
-                    incmsg = incmsg + " " + x
-            nuincmsg = incmsg.strip().split()
-            for i in range(len(nuincmsg)):
-                try:
-                    if (nuincmsg[i].endswith(".") or nuincmsg[i].endswith("?") or nuincmsg[i].endswith("!")) and len(nuincmsg) > 2:
-                        nuincmsg.append(nuincmsg[i])
-                        nuincmsg.pop(len(nuincmsg)-2)
-                        nuincmsg.remove(nuincmsg[i])
-                    if nuincmsg[i].endswith(",") and i == len(nuincmsg)-1:
-                        nuincmsg[i] = re.sub("$,", "", nuincmsg[i])
-                except:
-                    print("ran out of index range")
-            sndmsg = ""
-            for x in nuincmsg:
-                sndmsg = sndmsg + " " + x
-            #if forced == 1:
-            #    forced = 0
-            #    return await self.send_message(message.channel, sndmsg)
-            await self.send_message(message.channel, sndmsg)
+            # tmpmsgwrds = msgwords.copy()
+            # for i in range(len(msgwords)):
+                # if tmpmsgwrds[i].startswith("http") or tmpmsgwrds[i].startswith("www."):
+                    # msgwords.remove(tmpmsgwrds[i])
+            # wordsphrase = list()
+            # nxtwrphr = ""
+            # if len(msgwords) > 2:
+                # for w in msgwords:
+                    # if random.randint(1,10) > 3:
+                        # if nxtwrphr == "":
+                            # nxtwrphr = w
+                        # else:
+                            # nxtwrphr = nxtwrphr + " " + w
+                    # else:
+                        # if nxtwrphr == "":
+                            # wordsphrase.append(w)
+                        # else:
+                            # wordsphrase.append(nxtwrphr)
+                            # nxtwrphr = w
+                # if nxtwrphr != "":
+                    # wordsphrase.append(nxtwrphr)
+                    # nxtwrphr = ""
+            # else:
+                # wordsphrase = msgwords.copy()
+            # for w in wordsphrase:
+                # if w in freqdict:
+                    # freqdict[w] = str(int(freqdict[w]) + 1)
+                # else:
+                    # freqdict[w] = "1"
+                # freqlist.append(w)
+            # #for k,v in freqdict.items():
+            # #    f.write(k+","+str(v)+"\n")
+            # #f.close()
+            # #if barsaver != 1:
+            # #    self.barmemorysavetimer()
             
             
-        elif not message_content.startswith(self.config.command_prefix) and message.author != self.user and not message_content.startswith("&") and not message_content.startswith("!") and not message.channel.id == "249261582532476929":
-            #wom pull and save actions here
-            f = open("/home/barinade/Desktop/Discordbots/Ubuntu-nosleep/musicbot/wordfreq.txt", "w")
-            msgwords = re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message_content).split()
-            tmpmsgwrds = msgwords.copy()
-            for i in range(len(msgwords)):
-                if tmpmsgwrds[i].startswith("http") or tmpmsgwrds[i].startswith("www."):
-                    msgwords.remove(tmpmsgwrds[i])
-            wordsphrase = list()
-            nxtwrphr = ""
-            if len(msgwords) > 2:
-                for w in msgwords:
-                    if random.randint(1,10) > 3:
-                        if nxtwrphr == "":
-                            nxtwrphr = w
-                        else:
-                            nxtwrphr = nxtwrphr + " " + w
-                    else:
-                        if nxtwrphr == "":
-                            wordsphrase.append(w)
-                        else:
-                            wordsphrase.append(nxtwrphr)
-                            nxtwrphr = w
-                if nxtwrphr != "":
-                    wordsphrase.append(nxtwrphr)
-                    nxtwrphr = ""
-            else:
-                wordsphrase = msgwords.copy()
-            for w in wordsphrase:
-                if len(w) > 40:
-                    print("I skipped a phrase that was too long")
-                else:
-                    if w in freqdict:
-                        freqdict[w] = str(int(freqdict[w]) + 1)
-                    else:
-                        freqdict[w] = "1"
-                    freqlist.append(w)
-            for k,v in freqdict.items():
-                f.write(k+","+str(v)+"\n")
-            f.close()
-            #if barsaver != 1:
-            #    self.barmemorysavetimer()
             
+            
+            # nxtmsg = list()
+            # incmsg = ""
+            # verbs = ["is", "should", "be", "should be", "isn't", "may be", "can", "may", "could be", "would be", "has", "gets", "is"]
+            # namelist = ["tox", "poco", "soof", "arteth", "arty", "cody", "mar", "mario", "john", "tails", "guner", "vexx", "redd", "ukrainian", "atanga", "signis", "lazarus", "nansae", "ronwe", "emeris", "relay", "rythoka", "bae", "baewulf", "miri", "demo", "mpra2"]
+            # if msgwords[0].lower() in namelist and len(msgwords) == 1:
+                # sndmsg = msgwords[0]
+                # sndmsg = sndmsg+" "+verbs[random.randint(0,len(verbs)-1)]
+                # for _ in range(random.randint(1,10)):
+                    # sndmsg = sndmsg+" "+freqlist[random.randint(0,len(freqlist)-1)]
+                # return await self.send_message(message.channel, sndmsg)
+            # if msgwords[0].lower() in namelist and len(msgwords) > 1:
+                # sndmsg = msgwords[0]
+                # if msgwords[1] in verbs:
+                    # sndmsg = sndmsg+" "+msgwords[1]
+                # added = 0
+                # for _ in range(random.randint(1,10)):
+                    # sndmsg = sndmsg+" "+freqlist[random.randint(0,len(freqlist)-1)]
+                    # if random.randint(1,10) > 3 and added == 0 and msgwords[1] in verbs:
+                        # sndmsg = sndmsg+" "+" ".join(msgwords[2:])
+                        # added = 1
+                    # elif random.randint(1,10) > 3 and added == 0 and msgwords[1] not in verbs:
+                        # sndmsg = sndmsg+" "+" ".join(msgwords[1:])
+                        # added = 1
+                # return await self.send_message(message.channel, sndmsg)
+            # for _ in range(random.randint(1,random.randint(3,13))):
+                # nxtmsg.append(freqlist[random.randint(0,len(freqlist)-1)])
+            # nwmsg = 1
+            # for x in nxtmsg:
+                # if random.randint(1,10) > 3 and nwmsg == 1 and len(wordsphrase) > 1:
+                    # incmsg = incmsg + " " + wordsphrase[random.randint(0,len(wordsphrase)-1)]
+                    # nwmsg = 0
+                # if x in punctmrks:
+                    # incmsg = incmsg + x
+                # else:
+                    # incmsg = incmsg + " " + x
+            # nuincmsg = incmsg.strip().split()
+            # for i in range(len(nuincmsg)):
+                # try:
+                    # if (nuincmsg[i].endswith(".") or nuincmsg[i].endswith("?") or nuincmsg[i].endswith("!")) and len(nuincmsg) > 2:
+                        # nuincmsg.append(nuincmsg[i])
+                        # nuincmsg.pop(len(nuincmsg)-2)
+                        # nuincmsg.remove(nuincmsg[i])
+                    # if nuincmsg[i].endswith(",") and i == len(nuincmsg)-1:
+                        # nuincmsg[i] = re.sub("$,", "", nuincmsg[i])
+                # except:
+                    # print("ran out of index range")
+            # sndmsg = ""
+            # for x in nuincmsg:
+                # sndmsg = sndmsg + " " + x
+            # #if forced == 1:
+            # #    forced = 0
+            # #    return await self.send_message(message.channel, sndmsg)
+            # await self.send_message(message.channel, sndmsg)
+            
+            
+        # elif not message_content.startswith(self.config.command_prefix) and message.author != self.user and not message_content.startswith("&"):
+            # #wom pull and save actions here
+            # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\wordfreq.txt", "w")
+            # msgwords = re.sub("[^a-zA-Z0-9\,\.\? <>:@\!\#\&]+", "", message_content).split()
+            # tmpmsgwrds = msgwords.copy()
+            # for i in range(len(msgwords)):
+                # if tmpmsgwrds[i].startswith("http") or tmpmsgwrds[i].startswith("www."):
+                    # msgwords.remove(tmpmsgwrds[i])
+            # wordsphrase = list()
+            # nxtwrphr = ""
+            # if len(msgwords) > 2:
+                # for w in msgwords:
+                    # if random.randint(1,10) > 3:
+                        # if nxtwrphr == "":
+                            # nxtwrphr = w
+                        # else:
+                            # nxtwrphr = nxtwrphr + " " + w
+                    # else:
+                        # if nxtwrphr == "":
+                            # wordsphrase.append(w)
+                        # else:
+                            # wordsphrase.append(nxtwrphr)
+                            # nxtwrphr = w
+                # if nxtwrphr != "":
+                    # wordsphrase.append(nxtwrphr)
+                    # nxtwrphr = ""
+            # else:
+                # wordsphrase = msgwords.copy()
+            # for w in wordsphrase:
+                # if w in freqdict:
+                    # freqdict[w] = str(int(freqdict[w]) + 1)
+                # else:
+                    # freqdict[w] = "1"
+                # freqlist.append(w)
+            # for k,v in freqdict.items():
+                # f.write(k+","+str(v)+"\n")
+            # f.close()
+            # #if barsaver != 1:
+            # #    self.barmemorysavetimer()
+            ## ^^ bar block
+            ## ^^ bar block
             
             
 #womwom end            

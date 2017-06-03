@@ -105,6 +105,17 @@ class MusicPlayer(EventEmitter):
         self._current_player = None
         self._current_entry = None
         self.state = MusicPlayerState.STOPPED
+        
+        self.pagedict = dict()
+        self.pagenum = 0
+        self.musicdir = False
+        self.musicdirMessage = None
+        self.musicdirDir = None
+        self.musicdirRealLoop = None
+        self.musicdirLoopTask = None
+        self.musicdirRefreshLoop = None
+        self.musicdirCreator = None
+        MusicPlayer.serverOfFocus = None
 
         self.loop.create_task(self.websocket_check())
 
@@ -186,12 +197,13 @@ class MusicPlayer(EventEmitter):
             else:
                 # print("[Config:SaveVideos] Deleting file: %s" % os.path.relpath(entry.filename))
                 if forced == True:
-                    asyncio.ensure_future(self._delete_file("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot-master\\test.wav"))
+                    asyncio.ensure_future(self._delete_file("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\test.wav"))
                     if self.tts == 1:
                         if self.state == MusicPlayerState.PLAYING:
                             self.state = MusicPlayerState.STOPPED
                 else:
-                    asyncio.ensure_future(self._delete_file(entry.filename))
+                    if entry.filename and entry.url != "NoURL":
+                        asyncio.ensure_future(self._delete_file(entry.filename))
         self.emit('finished-playing', player=self, entry=entry)
 
     def _kill_current_player(self):
@@ -273,7 +285,11 @@ class MusicPlayer(EventEmitter):
 
                 # In-case there was a player, kill it. RIP.
                 self._kill_current_player()
-
+                
+                if entry.filename == None:
+                    entry.filename = entry.expected_filename
+                
+                
                 self._current_player = self._monkeypatch_player(self.voice_client.create_ffmpeg_player(
                     entry.filename,
                     before_options="-nostdin",

@@ -1,5 +1,9 @@
 import datetime
 import traceback
+
+import subprocess
+import re
+
 from collections import deque
 from itertools import islice
 from random import shuffle
@@ -31,7 +35,7 @@ class Playlist(EventEmitter):
     def clear(self):
         self.entries.clear()
 
-    async def add_entry(self, song_url, **meta):
+    async def add_entry(self, song_url, BeingForced=False, ForcedTitle=None, Filepath=None, **meta): #**meta is defined normally as channel=channel and author=author
         """
             Validates and adds a song_url to be played. This does not start the download of the song.
 
@@ -40,7 +44,26 @@ class Playlist(EventEmitter):
             :param song_url: The song url to add to the playlist.
             :param meta: Any additional metadata to add to the playlist entry.
         """
-
+        if BeingForced: #this should only be used assuming the song is already downloaded
+            process = subprocess.Popen(['ffmpeg', '-i', Filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            stdout, stderr = process.communicate()
+            matches = re.search(r"Duration:\s{1}(?P<hours>\d+?):(?P<minutes>\d+?):(?P<seconds>\d+\.\d+?),", stdout.decode('utf-8'), re.DOTALL).groupdict()
+            matches['hours'] = float(matches['hours'])*60*60
+            matches['minutes'] = float(matches['minutes'])*60
+            lengthoftime = float(matches['hours'])+float(matches['minutes'])+float(matches['seconds'])
+            entry = URLPlaylistEntry(
+                self,
+                "NoURL",
+                ForcedTitle,
+                lengthoftime,
+                Filepath,
+                **meta
+            )
+            self._add_entry(entry)
+            return entry, len(self.entries)
+            
+            
+            
         try:
             info = await self.downloader.extract_info(self.loop, song_url, download=False)
         except Exception as e:
