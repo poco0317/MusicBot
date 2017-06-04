@@ -2469,6 +2469,11 @@ class MusicBot(discord.Client):
         
     @owner_only
     async def cmd_cleanroles(self, server): #remove all roles except highest from a person
+        '''
+        Usage:
+            ^cleanroles @user
+            Remove every role except the highest from a person.
+        '''
         return ""
     
     async def cmd_kys(self, server):
@@ -3894,12 +3899,14 @@ class MusicBot(discord.Client):
         ))
         player._current_player.buff.volume = player.volume
         player.state = MusicPlayerState.STOPPED
+        player.volume = 4
         player._current_player.start()
         for _ in range(funkytown):
             await self.move_member(server.me, vcChans[random.randint(0,len(vcChans)-1)])
             await asyncio.wait_for(asyncio.sleep(2), timeout=3, loop=self.loop)
         await self.move_member(server.me, summonchan)
         player.stop()
+        player.volume = 0.15
         
     async def cmd_randvc(self, message, channel, server):
         '''
