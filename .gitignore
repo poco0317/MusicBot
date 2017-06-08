@@ -27,3 +27,4 @@ update_macdeps.command
 *.pyc
 musicbot/quotes.txt
 musicbot/activitymsg.txt
+musicbot/activityvoice.txt

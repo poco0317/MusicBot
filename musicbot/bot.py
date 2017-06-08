@@ -315,6 +315,11 @@ class MusicBot(discord.Client):
         for line in fm:
             self.MsgactivityDict[line.split("@")[0]] = [line.split("@")[1], line.split("@")[2]]
         fm.close()
+        self.VoiceactivityDict = dict()
+        fv = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activityvoice.txt", "r")
+        for line in fv:
+            self.VoiceactivityDict[line.split("@")[0]] = line.split("@")[1]
+        fv.close()
         
         
         
@@ -4887,8 +4892,7 @@ class MusicBot(discord.Client):
         '''
         Usage:
             ^activity @user
-            Checks the activity for a user as logged by the bot.
-            This monitors away, online, do not disturb, and offline activity.
+            Checks general activity for the mentioned user.
             The time difference given is formatted as: Days, Hours:Minutes:Seconds.
         '''
         if len(user_mentions) == 0:
@@ -4902,6 +4906,7 @@ class MusicBot(discord.Client):
         dnow = datetime.now()
         User = "user "+user_mentions[0].name
         DeleteConfirm = "\n(I deleted your message, "+author.name+", to cut down on mentions.)"
+        edit_later = await self.send_message(channel, "Give me a sec...")
         
         try:
             datediffStatus = self.datedif_getter(dnow, user_mentions[0].id, self.activityDict)
@@ -4913,7 +4918,6 @@ class MusicBot(discord.Client):
             LastMessage = "Said something last at "+self.MsgactivityDict[user_mentions[0].id][0]+". That was "+datediffMsg+" ago."
         except:
             LastMessage = "No Data."
-        edit_later = await self.send_message(channel, "Give me a sec...")
         try:
             LastMessageMessage = None
             for chnl in server.channels:
@@ -4934,10 +4938,32 @@ class MusicBot(discord.Client):
             FirstJoined = "At "+str(user_mentions[0].joined_at)+". That was "+datediffJoined+" ago."
         except:
             FirstJoined = "No Data."
+        try:
+            ddiffCreated = dnow-user_mentions[0].created_at
+            datediffCreated = re.search("([\d+ days, ]*\d+:\d+:\d+)", str(ddiffCreated)).group(0)
+            Created = "At "+str(user_mentions[0].created_at)+". That was "+datediffCreated+" ago."
+        except:
+            Created = "No Data."
+        try:
+            datediffVC = self.datedif_getter(dnow, user_mentions[0].id, self.VoiceactivityDict)
+            LastVC = "At "+self.VoiceactivityDict[user_mentions[0].id]+". That was "+datediffVC+" ago."
+        except:
+            LastVC = "No Data."
         
         
         
-        await self.edit_message(edit_later, "Activity data for "+User+"\nLast Status Change: "+LastStatus+"\nLast Sent Message: "+LastMessage+"\nLast Sent Message"+LastMessageMessage+"\nServer Join Time: "+FirstJoined+DeleteConfirm)
+        embed = discord.Embed(color = discord.Color(0xc27c0e), description="**Last Status Change**: "+LastStatus+"\n**Last Message**: "+LastMessage+"\n**Last Message Content**"+LastMessageMessage+"\n**Server Join Time**: "+FirstJoined+"\n**Last Voice Chat Join/Leave**: "+LastVC+DeleteConfirm)
+        embed.set_author(name="User Data for "+User)
+        embed.set_footer(text="Produced by the best spies from around the world", icon_url=self.user.avatar_url)
+        if user_mentions[0].avatar_url:
+            embed.set_thumbnail(url=user_mentions[0].avatar_url)
+        else:
+            embed.set_thumbnail(url=user_mentions[0].default_avatar_url)
+        
+        
+        
+        
+        await self.edit_message(edit_later, new_content="Done.", embed=embed)
     def datedif_getter(self, dnow, id, sequence):
         try:
             dthenarray = sequence[id].split()
@@ -6103,7 +6129,25 @@ class MusicBot(discord.Client):
 
         if before.voice_channel == after.voice_channel:
             return
-
+        else:
+            if before.id != self.user.id:
+                d = datetime.now()
+                if before.id not in self.VoiceactivityDict:
+                    self.VoiceactivityDict[before.id] = '{:%m/%d/%Y %H:%M:%S}'.format(d)
+                    f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activityvoice.txt", "a")
+                    f.write(before.id + "@" + "{:%m/%d/%Y %H:%M:%S}".format(d))
+                    f.close()
+                else:
+                    f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activityvoice.txt", "w")
+                    self.VoiceactivityDict[before.id] = '{:%m/%d/%Y %H:%M:%S}'.format(d)
+                    f.write("ID@DATE")
+                    for k,v in self.VoiceactivityDict.items():
+                        if k != "ID":
+                            f.write("\n"+k+"@"+v.strip())
+                    f.close()
+        
+            
+            
         if before.server.id not in self.players:
             return
 
