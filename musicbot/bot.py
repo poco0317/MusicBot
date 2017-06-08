@@ -4946,7 +4946,7 @@ class MusicBot(discord.Client):
             Created = "No Data."
         try:
             datediffVC = self.datedif_getter(dnow, user_mentions[0].id, self.VoiceactivityDict)
-            LastVC = "At "+self.VoiceactivityDict[user_mentions[0].id]+". That was "+datediffVC+" ago."
+            LastVC = "At "+self.VoiceactivityDict[user_mentions[0].id].strip()+". That was "+datediffVC+" ago."
         except:
             LastVC = "No Data."
         
