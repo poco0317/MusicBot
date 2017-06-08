@@ -296,11 +296,6 @@ class MusicBot(discord.Client):
         self.cap_msg_in_a_row = 0
         self.cap_msg_nick = ""
         
-        fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "r")
-        self.newmemberlist = []
-        for line in fl:
-            self.newmemberlist.append(line.strip())
-        fl.close()
         
         fr = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\reminders.txt", "r")
         self.reminderlist = []
@@ -315,6 +310,13 @@ class MusicBot(discord.Client):
         for line in fa:
             self.activityDict[line.split("@")[0]] = [line.split("@")[1], line.split("@")[2]]
         fa.close()
+        self.MsgactivityDict = dict()
+        fm = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activitymsg.txt", "r")
+        for line in fm:
+            self.MsgactivityDict[line.split("@")[0]] = [line.split("@")[1], line.split("@")[2]]
+        fm.close()
+        
+        
         
         self.quotelist = []
         fq = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\quotes.txt", "r")
@@ -333,6 +335,7 @@ class MusicBot(discord.Client):
         self.invitelists = {}
         self.polls = []
         self.modchan = None
+        self.emptyroledict = dict()
         
         self.stop_GTQ = False
         self.musicdirInstanceDict = dict()
@@ -2418,6 +2421,8 @@ class MusicBot(discord.Client):
             ^emptyrole [role]
             Remove everyone in the server from a role. Useful for news lists.
             This works with or without the @.
+            You can undo this action by doing ^undoemptyrole [role].
+            You may only undo the command ONCE per role.
         '''
         params = message.content.strip().split()
         params.pop(0)
@@ -2433,11 +2438,46 @@ class MusicBot(discord.Client):
             return Response("This role does not exist.", delete_after=10)
         if emptyrole.name == "@everyone":
             return Response("That's not possible.", delete_after=10)
+        self.emptyroledict[emptyrole.name] = set()
         for member in server.members:
             for role in member.roles:
                 if role == emptyrole:
                     await self.remove_roles(member, emptyrole)
+                    self.emptyroledict[emptyrole.name].add(member)
         return Response("The role "+emptyrole.name+" is now empty.", delete_after=15)
+    async def cmd_undoemptyrole(self, server, channel, message, author):
+        '''
+        Usage:
+            ^undoemptyrole [role]
+            Undo the ^emptyrole command for a role.
+            This only works once per role.
+            This works with or without the @.
+        '''
+        params = message.content.strip().split()
+        params.pop(0)
+        try:
+            params[0] = " ".join(params)
+        except:
+            return Response("You must include a role.", delete_after=5)
+        emptyrole = None
+        for role in server.roles:
+            if role.mention == params[0] or role.name.lower() == params[0].lower():
+                emptyrole = role
+        if emptyrole == None:
+            return Response("This role does not exist.", delete_after=10)
+        if emptyrole.name == "@everyone":
+            return Response("This is not possible.", delete_after=10)
+        try:
+            self.emptyroledict[emptyrole.name]
+        except:
+            return Response("This role change cannot be undone.", delete_after=10)
+        for member in self.emptyroledict[emptyrole.name]:
+            try:
+                await self.add_roles(member, emptyrole)
+            except:
+                print("This member doesn't exist or already has the role")
+        self.emptyroledict[emptyrole.name] = None
+        return Response("I have tried to undo the role purge.", delete_after=15)
         
     async def cmd_listsubs(self, server, channel, message, author, user_mentions):
         '''
@@ -4062,11 +4102,7 @@ class MusicBot(discord.Client):
         # await self.send_message(self.modchan, "JOIN: "+member.name)
         # await self.send_message(self.alertchan, "JOIN: "+member.name)
         # await self.send_message(server.default_channel, "oh SHIT guys its a new member: "+member.name+" (check your private messages unless you're a bot)")
-        # self.newmemberlist.append(member.id)
         # await self.send_message(member, "hey fam welcome to Ghost Divison :joy: \nThis server contains some 18+ content, but it's barred from new users via the Regular+ role. Ask an admin for it.\nPLEASE NOTE: you are not allowed to do anything on this server until you reply to this message (say anything you want, only I can see it)")
-        # fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "a")
-        # fl.write("\n"+member.id)
-        # fl.close()
         # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\removed.txt", "a")
         # curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
         # #if int(curtime[3]) > 12:
@@ -4091,23 +4127,23 @@ class MusicBot(discord.Client):
         # await self.send_message(self.modchan, "("+self.adminrole.mention+") LEFT/KICKED: "+member.name)
         # await self.send_message(self.alertchan, "("+self.adminrole.mention+") LEFT/KICKED: "+member.name)
         # f.close()
-    # async def on_member_update(self, before, after):
+    async def on_member_update(self, before, after):
         # #status-activity is made of dicts of UIDs:vars
-        # if before.status != after.status:
-            # d = datetime.now()
-            # if before.id not in self.activityDict:
-                # self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
-                # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activity.txt", "a")
-                # f.write(before.id+"@"+"@".join(self.activityDict[before.id]).strip())
-                # f.close()
-            # else:
-                # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activity.txt", "w")
-                # self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
-                # f.write("Line@Number@One")
-                # for k,v in self.activityDict.items():
-                    # if k != "Line":
-                        # f.write("\n"+k+"@"+"@".join(v).strip())
-                # f.close()
+        if before.status != after.status:
+            d = datetime.now()
+            if before.id not in self.activityDict:
+                self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
+                f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activity.txt", "a")
+                f.write(before.id+"@"+"@".join(self.activityDict[before.id]).strip())
+                f.close()
+            else:
+                f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activity.txt", "w")
+                self.activityDict[before.id] = [str(after.status), '{:%m/%d/%Y %H:%M:%S}'.format(d)]
+                f.write("Line@Number@One")
+                for k,v in self.activityDict.items():
+                    if k != "Line":
+                        f.write("\n"+k+"@"+"@".join(v).strip())
+                f.close()
     
     
     
@@ -4864,16 +4900,62 @@ class MusicBot(discord.Client):
         except:
             print("Couldn't delete the triggering message")
         dnow = datetime.now()
-        dthenarray = self.activityDict[user_mentions[0].id][1].split()
-        dthenarray[0] = dthenarray[0].split("/") #[MM,DD,YYYY]
-        dthenarray[1] = dthenarray[1].split(":") #[HH,MM,SS]
-        print(dthenarray)
+        User = "user "+user_mentions[0].name
+        DeleteConfirm = "\n(I deleted your message, "+author.name+", to cut down on mentions.)"
+        
+        try:
+            datediffStatus = self.datedif_getter(dnow, user_mentions[0].id, self.activityDict)
+            LastStatus = "Went "+self.activityDict[user_mentions[0].id][0]+" at "+self.activityDict[user_mentions[0].id][1].strip()+". That was "+datediffStatus+" ago."
+        except:
+            LastStatus = "No Data."
+        try:
+            datediffMsg = self.datedif_getter(dnow, user_mentions[0].id, self.MsgactivityDict)
+            LastMessage = "Said something last at "+self.MsgactivityDict[user_mentions[0].id][0]+". That was "+datediffMsg+" ago."
+        except:
+            LastMessage = "No Data."
+        edit_later = await self.send_message(channel, "Give me a sec...")
+        try:
+            LastMessageMessage = None
+            for chnl in server.channels:
+                try:
+                    LastMessageMessage = await self.get_message(chnl, self.MsgactivityDict[user_mentions[0].id][1])
+                except:
+                    LastMessageMessage = LastMessageMessage
+            if LastMessageMessage.attachments:
+                attachments = "(with attachments)"
+            else:
+                attachments = ""
+            LastMessageMessage = attachments+": "+LastMessageMessage.content
+        except:
+            LastMessageMessage = ": No Data."
+        try:
+            ddiffJoined = dnow-user_mentions[0].joined_at
+            datediffJoined = re.search("([\d+ days, ]*\d+:\d+:\d+)", str(ddiffJoined)).group(0)
+            FirstJoined = "At "+str(user_mentions[0].joined_at)+". That was "+datediffJoined+" ago."
+        except:
+            FirstJoined = "No Data."
+        
+        
+        
+        await self.edit_message(edit_later, "Activity data for "+User+"\nLast Status Change: "+LastStatus+"\nLast Sent Message: "+LastMessage+"\nLast Sent Message"+LastMessageMessage+"\nServer Join Time: "+FirstJoined+DeleteConfirm)
+    def datedif_getter(self, dnow, id, sequence):
+        try:
+            dthenarray = sequence[id].split()
+        except:
+            dthenarray = sequence[id][1].split()
+        try:
+            dthenarray[0] = dthenarray[0].split("/") #[MM,DD,YYYY]
+            dthenarray[1] = dthenarray[1].split(":") #[HH,MM,SS]
+        except:
+            dthenarray = sequence[id][0].split()
+            dthenarray[0] = dthenarray[0].split("/") #[MM,DD,YYYY]
+            dthenarray[1] = dthenarray[1].split(":") #[HH,MM,SS]
         dthen = datetime(int(dthenarray[0][2]), int(dthenarray[0][0]), int(dthenarray[0][1]), hour=int(dthenarray[1][0]), minute=int(dthenarray[1][1]), second=int(dthenarray[1][2]))
         ddiff = dnow-dthen
         match = re.search("([\d+ days, ]*\d+:\d+:\d+)", str(ddiff))
         datediff = match.group(0)
-        await self.send_message(channel, "User "+user_mentions[0].name+" went "+self.activityDict[user_mentions[0].id][0]+" at "+self.activityDict[user_mentions[0].id][1].strip()+". That was "+datediff+" ago.\n(I deleted your message, "+author.name+", to cut down on mentions.)")
-    
+        return datediff
+        
     async def _linkblock_controller(self, lbchan, tinseconds=300):
         await asyncio.wait_for(asyncio.sleep(tinseconds), timeout=tinseconds+5, loop=self.loop)
         if lbchan in self.linkblockchanlist:
@@ -5555,6 +5637,21 @@ class MusicBot(discord.Client):
         
     async def on_message(self, message):
         await self.wait_until_ready()
+        if message.author.id not in self.MsgactivityDict:
+            d = datetime.now()
+            self.MsgactivityDict[message.author.id] = ['{:%m/%d/%Y %H:%M:%S}'.format(d), message.id]
+            f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activitymsg.txt", "a")
+            f.write(message.author.id + "@" + "@".join(self.MsgactivityDict[message.author.id]).strip())
+            f.close()
+        else:
+            d = datetime.now()
+            f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\activitymsg.txt", "w")
+            self.MsgactivityDict[message.author.id] = ['{:%m/%d/%Y %H:%M:%S}'.format(d), message.id]
+            f.write("ID@DATE@MSGID")
+            for k,v in self.MsgactivityDict.items():
+                if k != "ID":
+                    f.write("\n"+k+"@"+"@".join(v).strip())
+            f.close()
         if message.channel.id == "297850406992609281":
             return ""
         message_content = message.content.strip()
@@ -5610,34 +5707,24 @@ class MusicBot(discord.Client):
                     # await self.send_message(message.channel, "Sorry, you can't mention everyone at once like that. Try `@here` instead.")
                     ## ^^ pin/@everyone mention block
         
-            
+        # if message.channel.id == "319599465226829824":
+            # await self.delete_message(message)
+            # for x in self.servers:
+                # if x.name == "Ghost Division":
+                    # srvr = x
+            # for r in srvr.roles:
+                # if r.name == "Regular":
+                    # regrole = r
+            # if message.author.top_role < regrole:
+                # for mbr in x.members:
+                    # if mbr.id == message.author.id:
+                        # roler = mbr
+                # await self.add_roles(roler, regrole)
             
         print(message_content)
         #print(self.messages)
         
-        ## vv faggot/newmember pm block
-        # if message.channel.is_private and message.author.id != "240206755156590592":
-            # print("Private channel found for message. Checking against new member list")
-            # if message.author.id in self.newmemberlist:
-                # for x in self.servers:
-                    # if x.name == "Ghost Division":
-                        # srvr = x
-                # for mbr in x.members:
-                    # if mbr.id == message.author.id:
-                        # roler = mbr
-                # await self.replace_roles(roler, srvr.roles[3])
-                # fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "r")
-                # lines = fl.readlines()
-                # fl.close()
-                # fl = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\idlist.txt", "w")
-                # for line in lines:
-                    # if not(re.search(message.author.id, line)):
-                        # #if line != message.author.id:
-                        # fl.write(line)
-                # await self.send_message(message.channel, "Enjoy your stay.")
-                # return self.newmemberlist.pop(self.newmemberlist.index(message.author.id))
-            # else:
-                # return await self.send_message(message.channel, "There is no reason you should pm me right now.")
+        ## vv faggot block
         # try:
             # for x in message.server.channels:
                 # if x.id == "264837364415725568":
