@@ -170,7 +170,7 @@ def convcard(card): #card is an array        #returns either a clean format of t
     return finalret
 def colorize(card, server):        #takes an array of a card and returns a new array
     global unotable
-    retlist = [card[0], 0]
+    retlist = [card[0], ""]
     if len(card) == 1:
         return card
     if card[1].lower() in ["g", "green"]:
@@ -343,6 +343,7 @@ class MusicBot(discord.Client):
         self.emptyroledict = dict()
         
         self.stop_GTQ = False
+        self.GTQ_running = False
         self.musicdirInstanceDict = dict()
         
         
@@ -1005,13 +1006,22 @@ class MusicBot(discord.Client):
             if x.name == "Ghost Division":
                 srvr = x
                 self.gdsrvr = x
+            if x.name == "BBot Test":
+                Tsrvr = x
+                self.testsrvr = x
+        for x in Tsrvr.channels:
+            if x.id == "328089520258023424":
+                self.logchan = x
         for x in srvr.channels:
-                if x.id == "264837364415725568":
-                    self.modchan = x
-                if x.id == "249261582532476929":
-                    self.testchan = x
-                if x.id == "306180221781016576":
-                    self.alertchan = x
+            if x.id == "264837364415725568":
+                self.modchan = x
+            if x.id == "249261582532476929":
+                self.testchan = x
+            if x.id == "306180221781016576":
+                self.alertchan = x
+            if x.id == "280862307956031488":
+                self.goodtunes = x
+                    
         for x in self.servers:
             self.invitelists[x.name] = await self.invites_from(x)
         for role in srvr.roles:
@@ -4016,10 +4026,7 @@ class MusicBot(discord.Client):
         
         Mainmessage = await self.send_message(channel, "I'll be using this message to confirm when the playlist is done being made... You may stop it early by using ^stopgt.\nFirst, I'm creating a list of songs.")
         linklist = []
-        for chanel in server.channels:
-            if chanel.id == "280862307956031488":
-                goodtunes = chanel
-        async for msg in self.logs_from(goodtunes, limit=1000):
+        async for msg in self.logs_from(self.goodtunes, limit=1000):
             link = re.search("(http[s]?://yout[^\s]+)", msg.content)
             link2 = re.search("(http[s]?://www.yout[^\s]+)", msg.content)
             if link:
@@ -4079,11 +4086,14 @@ class MusicBot(discord.Client):
     async def _gt_queuer(self, mainmessage, songlist, player=None, channel=None, author=None, server=None, permissions=None):
         if self.stop_GTQ:
             self.stop_GTQ = False
+            self.GTQ_running = False
             return await self.edit_message(mainmessage, mainmessage.content+"\nForcibly stopped!")
         try:
             song = songlist.pop(0)
+            self.GTQ_running = True
         except:
             self.stop_GTQ = False
+            self.GTQ_running = False
             return await self.edit_message(mainmessage, mainmessage.content+"\nDone! Check the queue if your music isn't playing!")
         await self.cmd_play(player, channel, author, server, permissions, None, song[0], Forced=True, mesag=mainmessage, ForcedAuthor=song[1])
         await self._gt_queuer(mainmessage, songlist, player=player, channel=channel, author=author, server=server, permissions=permissions)
@@ -4095,8 +4105,9 @@ class MusicBot(discord.Client):
             This can be used by anyone to immediately stop the queuing of a list of songs from the Good Tunes channel.
             Useful when you use the -A command with it, because it takes a pretty long time to finish queuing those songs.
         '''
-        if not self.stop_GTQ:
+        if not self.stop_GTQ and self.GTQ_running:
             self.stop_GTQ = True
+            self.GTQ_running = False
             return Response("I stopped it. The playlist should be stable again.", delete_after=15)
         else:
             return Response("I can't stop what has not been started.", delete_after=10)
@@ -4106,7 +4117,7 @@ class MusicBot(discord.Client):
         # #await self.replace_roles(member, server.roles[3])
         # await self.send_message(self.modchan, "JOIN: "+member.name)
         # await self.send_message(self.alertchan, "JOIN: "+member.name)
-        # await self.send_message(server.default_channel, "oh SHIT guys its a new member: "+member.name+" (check your private messages unless you're a bot)")
+        # await self.send_message(server.default_channel, "oh SHIT guys its a new member: "+member.name)
         # await self.send_message(member, "hey fam welcome to Ghost Divison :joy: \nThis server contains some 18+ content, but it's barred from new users via the Regular+ role. Ask an admin for it.\nPLEASE NOTE: you are not allowed to do anything on this server until you reply to this message (say anything you want, only I can see it)")
         # f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\musicbot\\removed.txt", "a")
         # curtime = [str(datetime.today().year), str(datetime.today().month), str(datetime.today().day), str(datetime.today().hour), str(datetime.today().minute)]
@@ -5124,6 +5135,7 @@ class MusicBot(discord.Client):
             # except:
                 # return Response("There are "+str(len(self.quotelist))+" quotes and that is outside the range allowed... or you didn't use a number.", delete_after=15)
         # quoted = await self.get_user_info(quote[1])
+        #quotedU = quoted
         # quoter = await self.get_user_info(quote[2])
         # quoted = quoted.name
         # quoter = quoter.name
@@ -5137,6 +5149,10 @@ class MusicBot(discord.Client):
             # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(quoteNum)+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Added by**: "+quoter+"\n**Quote from**: "+quoted+"\n**Quote**:\n"+realquote)
         # else:
             # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(quoteNum)+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Quote by**: "+quoted+"\n**Quote**:\n"+realquote)
+        #if quotedU.avatar_url:
+        #    embed.set_thumbnail(url=quotedU.avatar_url)
+        #else:
+        #    embed.set_thumbnail(url=quotedU.default_avatar_url)
         # embed.set_footer(text="Produced with a little more care than usual, I hope it worked", icon_url=self.user.avatar_url)
         # delete_later = await self.send_message(channel, embed=embed)
         # await self.delete_message_later(delete_later, 30)
@@ -5236,6 +5252,7 @@ class MusicBot(discord.Client):
         # for quote in self.quotelist:
             # if " ".join(params).lower() in re.sub("!NEWLINE!", "\n", quote[3]).lower():
                 # quoted = await self.get_user_info(quote[1])
+                #quotedU = quoted
                 # quoter = await self.get_user_info(quote[2])
                 # quoted = quoted.name
                 # quoter = quoter.name
@@ -5249,6 +5266,10 @@ class MusicBot(discord.Client):
                     # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(self.quotelist.index(quote))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Added by**: "+quoter+"\n**Quote from**: "+quoted+"\n**Quote**:\n"+realquote)
                 # else:
                     # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(self.quotelist.index(quote))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Quote by**: "+quoted+"\n**Quote**:\n"+realquote)
+                #if quotedU.avatar_url:
+                #    embed.set_thumbnail(url=quotedU.avatar_url)
+                #else:
+                #    embed.set_thumbnail(url=quotedU.default_avatar_url)
                 # embed.set_footer(text="Produced with a little more care than usual, I hope it worked", icon_url=self.user.avatar_url)
                 # delete_later = await self.send_message(channel, embed=embed)
                 # await self.delete_message_later(message, 30)
@@ -5262,6 +5283,7 @@ class MusicBot(discord.Client):
         # '''
         # quote = self.quotelist[len(self.quotelist)-1]
         # quoted = await self.get_user_info(quote[1])
+        #quotedU = quoted
         # quoter = await self.get_user_info(quote[2])
         # quoted = quoted.name
         # quoter = quoter.name
@@ -5275,6 +5297,10 @@ class MusicBot(discord.Client):
             # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(len(self.quotelist))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Added by**: "+quoter+"\n**Quote from**: "+quoted+"\n**Quote**:\n"+realquote)
         # else:
             # embed = discord.Embed(color = discord.Color(0xc27c0e), title="**Quote "+str(len(self.quotelist))+".**", description="**Added on** "+quote[0].split(" ")[0]+" **at** "+quote[0].split(" ")[1]+"\n**Quote by**: "+quoted+"\n**Quote**:\n"+realquote)
+        #if quotedU.avatar_url:
+        #    embed.set_thumbnail(url=quotedU.avatar_url)
+        #else:
+        #    embed.set_thumbnail(url=quotedU.default_avatar_url)
         # embed.set_footer(text="Produced with a little more care than usual, I hope it worked", icon_url=self.user.avatar_url)
         # delete_later = await self.send_message(channel, embed=embed)
         # await self.delete_message_later(message, 30)
@@ -5663,6 +5689,11 @@ class MusicBot(discord.Client):
         
     async def on_message(self, message):
         await self.wait_until_ready()
+        # #troll block
+        # if "watermelon" in message.content.lower() or "water melon" in message.content.lower() or "melon" in message.content.lower():
+            # return await self.delete_message(message)
+        # ##end troll block
+        
         if message.author.id not in self.MsgactivityDict:
             d = datetime.now()
             self.MsgactivityDict[message.author.id] = ['{:%m/%d/%Y %H:%M:%S}'.format(d), message.id]
@@ -5741,7 +5772,11 @@ class MusicBot(discord.Client):
             # for r in srvr.roles:
                 # if r.name == "Regular":
                     # regrole = r
-            # if message.author.top_role < regrole:
+                # if r.name == "Regular+":
+                    # regplusrole = r
+                # if r.name == "The Lad":
+                    # lowestmod = r
+            # if message.author.top_role < lowestmod and message.author.top_role != regrole:
                 # for mbr in x.members:
                     # if mbr.id == message.author.id:
                         # roler = mbr

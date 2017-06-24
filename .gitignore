@@ -28,3 +28,5 @@ update_macdeps.command
 musicbot/quotes.txt
 musicbot/activitymsg.txt
 musicbot/activityvoice.txt
+audio_cache/youtube-I1ckDjDwyxw-Celldweller_-_Hemlock_Drone_Attack.webm
+*.m4a
