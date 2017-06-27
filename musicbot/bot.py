@@ -43,6 +43,8 @@ from musicbot.config import Config, ConfigDefaults
 from musicbot.permissions import Permissions, PermissionsDefaults
 from musicbot.utils import load_file, write_file, sane_round_int
 
+from musicbot.unogame import The_Game
+
 from . import exceptions
 from . import downloader
 from .opus_loader import load_opus_lib
@@ -61,7 +63,6 @@ for k,v in freqdict.items():
     for _ in range(int(v)):
         freqlist.append(k)
 punctmrks = [",",".",":","-","!","(",")","?","'",";","\""]
-unotable = [["."],[".",0,0,0,0,0],[0],[0],[0],[0],".",[0]]
 barquiet = 0
 expired_cdt = 0
 expired_martyr = 0
@@ -72,158 +73,6 @@ barsaver = 0
 ttstimer = 0
 nxtttsQ = []
 nxtttsQuse = 0
-
-
-
-
-def cards(x):           #given x, this returns x number of cards as an array
-    cardlist = ["1 b", "2 b", "3 b", "4 b", "5 b", "6 b", "7 b", "8 b", "9 b", "0 b", "1 y", "2 y", "3 y", "4 y", "5 y", "6 y", "7 y", "8 y", "9 y", "0 y", "1 g", "2 g", "3 g", "4 g", "5 g", "6 g", "7 g", "8 g", "9 g", "0 g", "1 r", "2 r", "3 r", "4 r", "5 r", "6 r", "7 r", "8 r", "9 r", "0 r", "wd4", "wd4", "wd4", "wd4", "d2 r", "d2 r", "d2 y", "d2 y", "d2 g", "d2 g", "d2 b", "d2 b", "s r", "s r", "s g", "s g", "s b", "s b", "s y", "s y", "r r", "r r", "r y", "r y", "r b", "r b", "r g", "r g", "w", "w", "w", "w"]
-    givencards = []
-    for _ in range(x):
-        givencards.append(cardlist[random.randint(0,71)])
-    return givencards
-def iscard(cardArr):    #this expects an array param given from message_content.split()
-    if cardArr[0].lower() in ["w", "wd4", "s", "r", "d2", "wild", "wilddraw4", "draw4", "skip", "reverse", "draw2"]:  #w and wd4 technically have no color but need color params
-        if cardArr[1].lower() in ["r", "g", "b", "y", "red", "green", "blue", "yellow"]:
-            return True
-    if cardArr[0].lower() in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]:
-        if cardArr[1].lower() in ["r", "g", "b", "y", "red", "green", "blue", "yellow"]:
-            return True
-    return False
-def nextturn(): #pushes nextturn where we use optional(channelname) as a var if the table for it doesnt exist
-    global unotable
-    #print("from turn", unotable[2][0])
-    #print(unotable[1][0])
-    if unotable[1][0] == True:    #if Reverse is True, turn + 1
-        unotable[2][0] = unotable[2][0] + 1
-    else:
-        unotable[2][0] = unotable[2][0] - 1
-    if unotable[2][0] > unotable[3][0]:
-        unotable[2][0] = 0          #to avoid turns running out of bound (turns attach to players)
-    if unotable[2][0] < 0:
-        unotable[2][0] = unotable[3][0]
-    #print("to turn", unotable[2][0])
-    #print(unotable[1][0])
-    
-    
-    
-def convcard(card): #card is an array        #returns either a clean format of the card if given "2 b" or a dirty format for "2 blue"
-    finalret = [0,0]
-    numtowords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
-    if len(card) == 1:
-        if card[0].lower() == "wild":
-            return ["w"]
-        elif card[0].lower() == "w":
-            return ["Wild"]
-        if card[0].lower() in ["wilddraw4", "draw4"]:
-            return ["wd4"]
-        else:
-            return ["WildDraw4"]
-    if card[0].lower() == "wild":
-        finalret[0] = "w"
-    elif card[0].lower() in ["draw4", "wilddraw4"]:
-        finalret[0] = "wd4"
-    elif card[0].lower() == "skip":
-        finalret[0] = "s"
-    elif card[0].lower() == "draw2":
-        finalret[0] = "d2"
-    elif card[0].lower() in ["reverse", "rev"]:
-        finalret[0] = "r"
-    elif card[0].lower() in numtowords:
-        finalret[0] = (str(numtowords.index(card[0].lower())))
-    if card[1].lower() == "red":
-        finalret[1] = "r"
-    elif card[1].lower() == "blue":
-        finalret[1] = "b"
-    elif card[1].lower() == "green":
-        finalret[1] = "g"
-    elif card[1].lower() == "yellow":
-        finalret[1] = "y"
-    elif card[1].lower() == "r":
-        finalret[1] = "Red"
-    elif card[1].lower() == "b":
-        finalret[1] = "Blue"
-    elif card[1].lower() == "y":
-        finalret[1] = "Yellow"
-    elif card[1].lower() == "g":
-        finalret[1] = "Green"
-    if card[0].lower() == "w":
-        finalret[0] = "Wild"
-    elif card[0].lower() in ["wd4","d4"]:
-        finalret[0] = "WildDraw4"
-    elif card[0].lower() == "s":
-        finalret[0] = "Skip"
-    elif card[0].lower() == "r":
-        finalret[0] = "Reverse"
-    elif card[0].lower() == "d2":
-        finalret[0] = "Draw2"
-    if card[0].lower() in ["0","1","2","3","4","5","6","7","8","9"]:
-        finalret[0] = (numtowords[["0","1","2","3","4","5","6","7","8","9"].index(card[0])].capitalize())
-    if card[0].lower() in ["wild", "draw4", "wilddraw4", "skip", "draw2", "reverse", "rev", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"] and card[1].lower() in ["r", "g", "b", "y"]:
-        #print("AMBIGUITY CAUGHT!")
-        finalret[1] = card[1]
-    if card[0].lower() in ["w", "d4", "wd4", "s", "d2", "r", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] and card[1].lower() in ["red", "green", "blue", "yellow"]:
-        #print("AMBIGUITY CAUGHT!")
-        finalret[0] = card[0]
-    #print("converted ", card)
-    #print("to ", finalret)
-    return finalret
-def colorize(card, server):        #takes an array of a card and returns a new array
-    global unotable
-    retlist = [card[0], ""]
-    if len(card) == 1:
-        return card
-    if card[1].lower() in ["g", "green"]:
-        if server.name == "Ghost Division":
-            retlist[1] = "<:unoGREEN:245719805896818699>"
-        if server.name == "CBU BEST":
-            retlist[1] = "<:unoGREEN:287822013916119040>"
-    elif card[1].lower() in ["r", "red"]:
-        if server.name == "Ghost Division":
-            retlist[1] = "<:unoRED:245719814251872256>"
-        if server.name == "CBU BEST":
-            retlist[1] = "<:unoRED:287822006496395264>"
-    elif card[1].lower() in ["y", "yellow"]:
-        if server.name == "Ghost Division":
-            retlist[1] = "<:unoYELLOW:245719822573371393>"
-        if server.name == "CBU BEST":
-            retlist[1] = "<:unoYELLOW:287821996362825769>"
-    elif card[1].lower() in ["b", "blue"]:
-        if server.name == "Ghost Division":
-            retlist[1] = "<:unoBLUE:245719795960512512>"
-        if server.name == "CBU BEST":
-            retlist[1] = "<:unoBLUE:287822021037916161>"
-    return retlist
-def hascard(card, plyr):        #plyr must be a string; checks if str:card is in the array value attached to key plyr in the players dictionary
-    global unotable
-    if card in unotable[4][plyr]:        #[4][0] is a dictionary, [4][0][plyr] is an array/list
-        return True
-    return False
-def delcard(card, plyr):      #card and plyr are strings
-    global unotable
-    unotable[4][plyr].remove(card)
-def remplayer(plyr):    #plyr must be a string
-    global unotable
-    #unotable[4].pop(plyr)
-    del unotable[4][plyr]
-    if (unotable[3][0]-1) < 1:
-        #await discord.Client.send_message(unotable[0][1], "The game must end because there are too few players left.")
-        unotable[5].remove(plyr)
-        unotable = [["."],[".",0,0,0,0,0,0],[],[],[],[],".",[]]
-        return "LACK OF PLAYERS"
-    if unotable[2][0] == unotable[5].index(plyr):
-        nextturn()
-        unotable[5].remove(plyr)
-        #  await discord.Client.send_message(unotable[0][1], "It is now "+nnick+"'s turn.")
-        # await discord.Client.send_message(unotable[0][1], "The top card is: "+unotable[6])
-        unotable[3][0] = unotable[3][0] - 1
-        return "MOVETURN"
-    for i in range(len(unotable[7])):
-        if unotable[7][i].name == plyr:
-            unotable[7].pop(i)
-            unotable[5].remove(plyr)
-            unotable[3][0] = unotable[3][0] - 1
-            return "PLAYERLEFT"
 
 class SkipState:
     def __init__(self):
@@ -255,27 +104,7 @@ class Response:
 
 
 class MusicBot(discord.Client):
-#    def resettimer(self, channel):
-#        global timerun
-#        global chtime
-#        global timenow
-#        global timethen
-#        global tinsecs
-#        timenow = datetime.today()
-#        timethen = timenow.replace(day=timenow.day, hour=timenow.hour, minute=timenow.minute, second=timenow.second+5, microsecond=0)
-#        chtime = timethen-timenow
-#        tinsecs = chtime.seconds+1
-#        args = [channel]
-#        print(channel)
-#        timerun = Timer(5, self._timernoon, args=args)
-#        loop = asyncio.get_event_loop()
-#        tasks = [asyncio.ensure_future(self._timernoon(channel))]
-#        self.loop.run_until_complete(asyncio.gather(self._timernoon))
-#        loop.close()
-#        timerun.start()
-#    async def _timernoon(self, channel):
-#        await self.send_message(channel, "Test successful.")
-#        self.resettimer(channel)
+
     def __init__(self, config_file=ConfigDefaults.options_file, perms_file=PermissionsDefaults.perms_file):
         self.players = {}
         self.the_voice_clients = {}
@@ -345,6 +174,8 @@ class MusicBot(discord.Client):
         self.stop_GTQ = False
         self.GTQ_running = False
         self.musicdirInstanceDict = dict()
+        
+        self.UnoGames = {} #dictionary of uno game objects bound to channel IDs
         
         
 
@@ -2561,528 +2392,388 @@ class MusicBot(discord.Client):
         '''
         return Response("LMAO MY FUCKING ASS OFF :100: :100: :ok_hand: :joy:", delete_after=2)
 
-        
-        
-        
-        
-#   unotable[0][0] = channel name
-#   unotable[0][1] = channel object
-#   unotable[1][0] = reverse flag (true = normal play)
-#   unotable[1][1] = whether or not the game is going on (1 = True)
-#   unotable[1][2] = the passflag (for ^pass)
-#   unotable[1][3] = tempflag for ^makeuno reuse
-#   unotable[1][4] = number of times ^draw was used
-#   unotable[1][5] = the quit/endflag (for ^quituno and ^stopgame)
-#   unotable[1][6] = whether or not the bot is in the game
-#   unotable[2][0] = turn number (not to exceed number of players)
-#   unotable[3][0] = number of players - 1
-#   unotable[4] = dictionary of each player and their cards
-#   unotable[5]    = an array of strings of players in the order they should be (so when turn=0, unotable[5][0] is the person to play)
-#   unotable[6]    = a string of the top card
-#   unotable[7]    = an array of member/user objects to send pm's to
     async def cmd_makeuno(self, channel, author):
         '''
         Usage:
             ^makeuno
-            Literally creates an uno game. Usually doesn't work if a game is already happening.
+            Create an uno game. This is allowed once per text channel.
+            If this is done outside of the main channel, the bot will announce in the main channel that an uno game is happening.
         '''
-        global unotable
-        try:
-            print(unotable[0][0])
-        except:
-            unotable = [["."],[".",0,0,0,0,0,0],[],[],[],[],".",[]]
-        if unotable[1][1] == 1:
-            return Response("Dude you can't make a new uno game when one's already happening in channel "+unotable[0][0], delete_after=5)
-        else:
-            if unotable[1][3] == True:
-                return Response("Dude you can't make another uno game when one's already starting. Say ^join in channel "+unotable[0][0], delete_after=20)
-            unotable = [[channel.name, channel],[True,False,False,True,0,True,False],[0],[0],[dict()],[author.name],"nothing",[author]]
-            unotable[6] = " ".join(convcard(cards(1)[0].split()))
-            print(unotable[6])
-            unotable[4] = {author.name:cards(7)}
-            while unotable[6] in ["w", "wd4", "s", "r", "d2", "Wild", "WildDraw4", "Skip Red", "Skip Green", "Skip Yellow", "Skip Blue", "Reverse Red", "Reverse Blue", "Reverse Green", "Reverse Yellow", "Draw2 Red", "Draw2 Green", "Draw2 Yellow", "Draw2 Blue"]:
-                unotable[6] = " ".join(convcard(cards(1)[0].split()))
-                print("topcard switched")
-            unotable[7] = [author]
-            await self.send_message(unotable[0][1], "An Uno game is starting, my dudes :ok_hand: say ^join to join, leave by saying ^quituno. ^startgame starts the game. ^botjoingame adds me to the game.")
-            if unotable[0][1] != channel.server.default_channel:
-                await self.send_message(channel.server.default_channel, "An Uno game is starting, my dudes :ok_hand: get the fuck into "+unotable[0][0]+" and say ^join, leave by saying ^quituno. ^startgame starts the game. ^botjoingame adds me to the game.")
-            await self.send_message(channel, author.name+" is player number 0.")
+        if channel.id in self.UnoGames:
+            return Response("An uno game is already in progress in this channel.", delete_after=15)
+        game = The_Game(self, channel.server, channel, author)
+        self.UnoGames[channel.id] = game
+        
+        embed = discord.Embed(color = discord.Color(0xc27c0e), description="Say ^join to join.\n**Players:** 1\n\n**Top Card:** "+" ".join(game.card_Converter(game.topCard[0].split()))+"\n\n**Card Count:**\n"+author.name+": 7\n\n**Current Turn:** Nobody, yet\n**Next Turn:** Nobody, yet\n\n**To play a card:** ^plcard value color\n**Other Commands:** startgame, quituno, showcards, draw, pass, botjoingame")
+        embed.set_author(name="Uno Game in "+channel.name+" started by "+author.name)
+        embed.set_footer(text="Produced with precision", icon_url=self.user.avatar_url)
+        embed.set_thumbnail(url=game.colorURL)
+        game.messageHolder = await self.send_message(channel, embed=embed)
+        if game.chan != channel.server.default_channel:
+            await self.send_message(channel.server.default_channel, "An Uno game is starting in "+game.chan.name+". Say ^join in there to join the game.")
+            
+    @owner_only
+    async def cmd_forceunoupdate(self, channel, author):
+        game = self.UnoGames[channel.id]
+        await game.update_Message()
+        
+    @owner_only
+    async def cmd_forceunorepost(self, channel, author):
+        game = self.UnoGames[channel.id]
+        await game.repost_Message()
+        
+    @owner_only
+    async def cmd_forceunocleanup(self, channel, author):
+        game = self.UnoGames[channel.id]
+        await game.repost_Message()
+        await game.clean_Messages()
+            
     async def cmd_join(self, channel, author):
         '''
         Usage:
             ^join
             Join an uno game after creation at any point even after it starts.
+            There is a hard limit of 10 players per game.
         '''
-        global unotable
-        if unotable[1][3] != True:
-            return Response("You can't join a game that doesn't exist, dude", delete_after=5)
-        if author.name in unotable[5]:
-            return Response("You can't play twice, dude.", delete_after=5)
-        unotable[3][0] = unotable[3][0] + 1
-        unotable[4][author.name] = cards(7)
-        unotable[5].append(author.name)
-        unotable[7].append(author)
-        await self.send_message(channel, author.name+" is player number "+str(unotable[3][0]))
-    async def cmd_startgame(self, channel, author, server):
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id in game.playerCards:
+            return Response("You cannot join an uno game twice.", delete_after=15)
+        if len(game.players) == 10:
+            return Response("The max number of players in this game has been reached. You cannot join.", delete_after=15)
+        game.players.append(author)
+        game.playerCards[author.id] = game.card_Gen(7)
+        await game.update_Message()
+        return Response(author.name+" joined the game as player number "+str(len(game.players))+".", delete_after=5)
+        
+    async def cmd_botjoingame(self, author, channel, message):
+        '''
+        Usage:
+            ^botjoingame
+            Make the bot join the uno game.
+            Usable one time per game.
+            Only the creator of the game may bring the bot in.
+        '''
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id != game.auth.id:
+            return Response("Only the game owner can bring the bot in.", delete_after=10)
+        if game.botFlag:
+            return Response("The bot is already participating in this game.", delete_after=10)
+        if len(game.players) == 10:
+            return Response("The max number of players in this game has been reached. The bot cannot join.", delete_after=15)
+        game.players.append(self.user)
+        game.playerCards[self.user.id] = game.card_Gen(7)
+        game.botFlag = True
+        await game.update_Message()
+        return Response(author.name+" made "+self.user.name+" join the game as player number "+str(len(game.players))+".", delete_after=15)
+        
+    async def cmd_startgame(self, channel, message, author, server):
         '''
         Usage:
             ^startgame
             Start an uno game after it is created.
+            An uno game can be stopped with ^stopgame.
         '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("You can't start a game that never existed, dude.", delete_after=5)
-        if author.name not in unotable[5]:
-            return Response("A nonplayer can't start the game, dude.", delete_after=5)
-        if unotable[1][1] == True:
-            return Response("You can't start a started game, dude.", delete_after=5)
-        if unotable[3][0] < 1:
-            return Response("You can't start a solo game, dude.", delete_after=5)
-        await self.send_message(channel, "It is now "+unotable[5][unotable[2][0]]+"'s turn.")
-        await self.send_message(channel, "The top card is: "+" ".join(colorize(unotable[6].split(), server)))
-        unotable[1][1] = 1
-        for person in unotable[7]:
-            tmpstr = ""
-            for x in unotable[4][person.name]:
-                tmpstr = tmpstr + ", " + " ".join(convcard(x.split()))
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id != game.auth.id:
+            return Response("Only the game owner can begin the game.", delete_after=10)
+        if len(game.players) < 2:
+            return Response("You cannot start a solo game.", delete_after=10)
+        if game.gameLaunchedFlag:
+            return Response("The game has already started.", delete_after=10)
+        game.gameLaunchedFlag = True
+        for person in game.players:
             if person.name != self.user.name:
-                await self.send_message(person, "Your cards right now: "+tmpstr.strip(","))
-    async def cmd_quituno(self, channel, author, server):
+                await self.send_message(person, "The game is starting! Your cards right now:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[person.id]]))
+        game.latestMessage = await self.send_message(channel, "The game is starting! It is currently "+game.players[game.currentTurn].name+"'s turn.")
+                
+    async def cmd_quituno(self, channel, author, server, message):
         '''
         Usage:
             ^quituno
             Leave the current game of uno. If only 1 player remains, the game ends.
         '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("You can't leave a game that never existed, dude.", delete_after=5)
-        if author.name not in unotable[5]:
-            return Response("You can't leave a game you aren't in, dude.", delete_after=5)
-        remstr = remplayer(author.name)
-        if remstr == "LACK OF PLAYERS":
-            await self.send_message(channel, "The game must end because there are too few players left...")
-            return Response(":joy: :gun:", delete_after=5)
-        elif remstr == "MOVETURN":
-            await self.send_message(channel, author.nick+" has left and it is now "+unotable[5][unotable[2][0]]+"'s turn.")
-            await self.send_message(channel, "The top card is: "+" ".join(colorize(unotable[6].split(), server)))
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id not in game.playerCards:
+            return Response("You are not in this game of uno.", delete_after=10)
+        game.playerLeftText = game.remove_player(author.id)
+        if game.playerLeftText == "LACK OF PLAYERS":
+            await self.delete_message(game.messageHolder)
+            delete_later = await self.send_message(channel, "The Uno game must end in a stalemate due to a lack of players.")
+            del game
+            del self.UnoGames[channel.id]
+            return await self.delete_message_later(delete_later, 60)
+        elif game.playerLeftText == "MOVETURN":
+            delete_later = await self.send_message(channel, author.name+" has left the game and it is now "+game.players[game.currentTurn].name+"'s turn.")
+            await game.update_Message()
+            if game.players[game.currentTurn].id == self.user.id:
+                game.play()
+            else:
+                await self.send_message(game.players[game.currentTurn], "Your turn has come! Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[game.players[game.currentTurn].id]]))
+            await game.clean_Messages(Alt=False)
+            game.latestMessage = delete_later
         else:
-            await self.send_message(channel, "Looks like "+author.name+" is out of the game.")
-    async def cmd_unokick(self, channel, author, server, user_mentions):
+            delete_later = await self.send_message(channel, author.name+" has left the game. Their cards have been discarded.")
+            await game.update_Message()
+            await game.clean_Messages(Alt=False)
+            game.latestMessage = delete_later
+        
+    async def cmd_unokick(self, channel, author, server, message, user_mentions):
         '''
         Usage:
-            ^unokick @Username
+            ^unokick @user
             Kick someone from an uno game.
+            Only server mods can do this.
         '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("You can't kick someone from a game that never existed.", delete_after=5)
-        if user_mentions[0].name not in unotable[5]:
-            return Response("You can't kick someone who isn't in the game.", delete_after=5)
-        remstr = remplayer(user_mentions[0].name)
-        if remstr == "LACK OF PLAYERS":
-            await self.send_message(channel, "The game must end because there are too few players left...")
-            return Response(":joy: :gun:", delete_after=5)
-        elif remstr == "MOVETURN":
-            await self.send_message(channel, user_mentions[0].name+" was kicked and it is now "+unotable[5][unotable[2][0]]+"'s turn.")
-            await self.send_message(channel, "Top top card is: "+" ".join(colorize(unotable[6].split(), server)))
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if user_mentions[0].id not in game.playerCards:
+            return Response("That user is not playing Uno in this channel.", delete_after=10)
+        game.playerLeftText = game.remove_player(user_mentions[0].id)
+        if game.playerLeftText == "LACK OF PLAYERS":
+            await self.delete_message(game.messageHolder)
+            delete_later = await self.send_message(channel, "The Uno game must end in a stalemate due to a lack of players.")
+            del game
+            del self.UnoGames[channel.id]
+            return await self.delete_message_later(delete_later, 60)
+        elif game.playreLeftText == "MOVETURN":
+            delete_later = await self.send_message(channel, user_mentions[0].name+" was kicked and it is now "+game.players[game.currentTurn].name+"'s turn.")
+            await game.update_Message()
+            if game.players[game.currentTurn].id == self.user.id:
+                game.play()
+            await game.clean_Messages(Alt=False)
+            game.latestMessage = delete_later
         else:
-            await self.send_message(channel, "Looks like "+user_mentions[0].name+" got kicked from the game.")
-    async def cmd_stopgame(self, channel, author):
+            delete_later = await self.send_message(channel, user_mentions[0].name+" was kicked from the game. Their cards have been discarded.")
+            await game.update_Message()
+            await game.clean_Messages(Alt=False)
+            game.latestMessage = delete_later
+
+    async def cmd_stopgame(self, channel, author, message):
         '''
         Usage:
             ^stopgame
             Stops an uno game already in progress.
+            Only server mods can do this.
         '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("You can't stop a game that never existed, dude.", delete_after=5)
-        if author.name not in unotable[5]:
-            return Response("You can't stop a game you never had anything to do with.", delete_after=5)
-        unotable = [["."],[".",0,0,0,0,0,0],[],[],[],[],".",[]]
-        await self.send_message(channel, "Uno game stopped.")
-    async def cmd_showcards(self, channel, author):
+        await self.delete_message(game.messageHolder)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        del game
+        del self.UnoGames[channel.id]
+        return Response("This Uno game has been forcibly stopped.", delete_after=15)
+        
+    async def cmd_showcards(self, channel, author, message):
         '''
         Usage:
             ^showcards
             Make the bot PM your cards to you again.
         '''
-        global unotable
-        if author.name not in unotable[5]:
-            return Response("You don't have cards.", delete_after=5)
-        tmpstr = ""
-        for x in unotable[4][author.name]:
-            tmpstr = tmpstr + ", " + " ".join(convcard(x.split()))
-        await self.send_message(author, "Your cards: "+ tmpstr.strip(","))
-    async def cmd_topcard(self, channel, author, server):
-        '''
-        Usage:
-            ^topcard
-            Check the top card in an uno game already in progress.
-        '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("You can't see the top card of a game that never existed.", delete_after=5)
-        await self.send_message(channel, "The top card is: "+" ".join(colorize(unotable[6].split(), server)))
-    async def cmd_draw(self, channel, author, server, sendpm=True):
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id not in game.playerCards:
+            return Response("You don't have cards.", delete_after=10)
+        await self.send_message(author, "Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[author.id]]))
+        
+    async def cmd_draw(self, channel, author, server, message):
         '''
         Usage:
             ^draw
             Draw a single uno card in a game already in progress when it is your turn. Possible up to 5 times even if you can play a card.
+            If you try to draw again after drawing 5 cards, you are forced to pass.
         '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("You can't draw for a game that never existed.", delete_after=5)
-        if author.name not in unotable[5]:
-            return Response("You can't get cards if you aren't in the game.", delete_after=5)
-        if author.name != unotable[5][unotable[2][0]]:
-            return Response("You can't draw if it isn't your turn.", delete_after=5)
-        if unotable[1][1] != True:
-            return Response("The game hasn't started.", delete_after=5)
-        if unotable[5][unotable[2][0]] == author.name:
-            if unotable[1][4] == 5:
-                nextturn()
-                await self.send_message(channel, "Force Pass! You did not draw a card. It is now "+unotable[5][unotable[2][0]]+"'s turn.")
-                await self.send_message(channel, "The top card is: "+" ".join(colorize(unotable[6].split(), server)))
-                tmpstr = ""
-                for x in unotable[4][unotable[5][unotable[2][0]]]:
-                    tmpstr = tmpstr + ", " + " ".join(convcard(x.split()))
-                for person in unotable[7]:
-                    if person.name == unotable[5][unotable[2][0]]:
-                        await self.send_message(person, "Your cards right now: "+tmpstr.strip(","))
-                unotable[1][4] = 0
-                return "passed"
-            print(unotable[4][author.name])
-            newcard = cards(1)[0]
-            oldcards = unotable[4][author.name].copy()
-            #unotable[4][author.name] = oldcards.append(newcard)
-            unotable[4][author.name].append(newcard)
-            print(unotable[4][author.name])
-            if sendpm==True:
-                await self.send_message(author, author.name+", you got a "+" ".join(convcard(newcard.split())))
-            unotable[1][2] = True
-            unotable[1][4] = unotable[1][4] + 1
-            await self.send_message(channel, "Card drawn. You may draw "+str(5-unotable[1][4])+" more cards before being forced to ^pass.")
-    async def cmd_pass(self, channel, author, server):
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id not in game.playerCards:
+            return Response("You can't draw if you aren't in the game.", delete_after=10)
+        if author.id != game.players[game.currentTurn].id:
+            return Response("You can't draw if it isn't your turn.", delete_after=10)
+        if not game.gameLaunchedFlag:
+            return Response("You can't draw if the game hasn't started.", delete_after=10)
+        if game.drawCounter == 5:
+            game.next_turn()
+            await game.update_Message()
+            game.drawCounter = 0
+            await game.clean_Messages(Alt=False)
+            game.latestMessage = await self.send_message(channel, "You were forced to pass instead of drawing! It is now "+game.players[game.currentTurn].name+"'s turn.")
+            if game.players[game.currentTurn].id != self.user.id:
+                return await self.send_message(game.players[game.currentTurn], "Your turn has come! Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[game.players[game.currentTurn].id]]))
+            else:
+                return await game.bot_play()
+        if len(game.gameCards) == 0 and len(game.discardedCards) == 0:
+            game.next_turn()
+            await game.update_Message()
+            game.drawCounter = 0
+            await game.clean_Messages(Alt=False)
+            game.latestMessage = await self.send_message(channel, "We have run out of cards! The turn was forced forward.")
+            if game.players[game.currentTurn].id != self.user.id:
+                return await self.send_message(game.players[game.currentTurn], "Your turn has come! Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[game.players[game.currentTurn].id]]))
+            else:
+                return await game.bot_play()
+        game.playerCards[author.id] = game.playerCards[author.id]+game.card_Gen(1)
+        if game.players[game.currentTurn].id != self.user.id:
+            await self.send_message(author, "You got a "+" ".join(game.card_Converter(game.playerCards[author.id][-1].split())).capitalize())
+            game.drawCounter += 1
+            return Response("You can draw "+str(5-game.drawCounter)+" more cards before being forced to ^pass.", delete_after=10)
+            
+            
+    async def cmd_pass(self, channel, author, server, message):
         '''
         Usage:
             ^pass
-            Pass your turn in an uno game already in progress when it is your turn and you have drawn at least one time.
+            Pass your turn in an uno game.
+            It must be your turn and you must have drawn at least one time.
         '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("You can't pass in a game that never existed.", delete_after=5)
-        if author.name not in unotable[5]:
-            return Response("You can't pass if you aren't in the game.", delete_after=5)
-        if unotable[1][2] == False:
-            return Response("You can't pass if you haven't drawn a card.", delete_after=5)
-        nextturn()
-        await self.send_message(channel, "Pass! It is now "+unotable[5][unotable[2][0]]+"'s turn.")
-        await self.send_message(channel, "The top card is: "+" ".join(colorize(unotable[6].split(), server)))
-        unotable[1][4] = 0
-        tmpstr = ""
-        for x in unotable[4][unotable[5][unotable[2][0]]]:
-            tmpstr = tmpstr + ", " + " ".join(convcard(x.split()))
-        for person in unotable[7]:
-            if person.name == unotable[5][unotable[2][0]] and person.name != self.user.name:
-                await self.send_message(person, "Your cards right now: "+tmpstr.strip(","))
-        unotable[1][2] = False
-        if unotable[5][unotable[2][0]] == self.user.name:
-            print("Its the bots turn!!")
-            botcanplay = False
-            topcrdarr = convcard(unotable[6].split())
-            for card in unotable[4][self.user.name]:
-                cardarr = card.split()
-                if len(cardarr) == 1 or cardarr[0] == topcrdarr[0] or cardarr[1] == topcrdarr[1]:
-                    botcanplay = True
-                    break
-            if botcanplay == False:
-                await self.send_message(channel, "^draw")
-                await self.cmd_draw(channel, self.user, sendpm=False)
-                print("I had to draw")
-                for card in unotable[4][self.user.name]:
-                    cardarr = card.split()
-                    if len(cardarr) == 1 or cardarr[0] == topcrdarr[0] or cardarr[1] == topcrdarr[1]:
-                        botcanplay = True
-                        break
-                if botcanplay == True:
-                    print("I can play a card.")
-                    if len(cardarr) > 1:
-                        sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
-                    else:
-                        wcolr = "r"
-                        for x in unotable[4][self.user.name]:
-                            if len(x.split()) > 1:
-                                wcolr = x.split()[1]
-                            if wcolr == "r":
-                                wcolr == "b"
-                            else:
-                                wcolr == "r"
-                        sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
-                    await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
-                else:
-                    print("I had to pass")
-                    await self.send_message(channel, "^pass")
-                    await self.cmd_pass(channel, self.user)
-            else:
-                print("I can play a card.")
-                if len(cardarr) > 1:
-                    sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
-                else:
-                    wcolr = "r"
-                    for x in unotable[4][self.user.name]:
-                        if len(x.split()) > 1:
-                            wcolr = x.split()[1]
-                        if wcolr == "r":
-                            wcolr == "b"
-                        else:
-                            wcolr == "r"
-                    sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
-                await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
-            unotable[1][2] = False
-            unotable[1][4] = 0
-                
-    async def cmd_showturn(self, channel, author):
-        '''
-        Usage:
-            ^showturn
-            Show the player whose turn it currently is in a running game of uno. Shows a list of players in the game.
-        '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("It is nobody's turn in a game that never existed.", delete_after=5)
-        if unotable[1][1] != True:
-            return Response("It is nobody's turn in a game that hasn't started.", delete_after=5)
-        await self.send_message(channel, "It is currently "+unotable[5][unotable[2][0]]+"'s turn.")
-        if unotable[2][0] + 1 > unotable[3][0] and unotable[1][0] == True:  #if next turn is too high and normal gameplay  
-            nnick = unotable[5][0]                                  #nnick = first guy in unotable[5]
-        elif unotable[2][0] - 1 < 0 and unotable[1][0] == False:    #if next turn is too low and reverse gameplay
-            nnick = unotable[5][unotable[3][0]]                     #nnick = last guy in unotable[5]
-        else:                                       #if any other case
-            nnick = unotable[5][unotable[2][0]+1]   #nnick = next guy in unotable[5]
-        await self.send_message(channel, "Next turn it will be "+nnick+"'s turn unless a reverse is played.")
-        await self.send_message(channel, "The list of players in the game in no particular order: "+", ".join(unotable[5]))
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id not in game.playerCards:
+            return Response("You can't pass if you aren't in the game.", delete_after=10)
+        if author.id != game.players[game.currentTurn].id:
+            return Response("You can't pass if it isn't your turn.", delete_after=10)
+        if game.drawCounter == 0:
+            return Response("You must draw first before you pass.", delete_after=10)
+        game.drawCounter = 0
+        game.next_turn()
+        await game.clean_Messages(Alt=False)
+        game.latestMessage = await self.send_message(channel, "Pass! It is now "+game.players[game.currentTurn].name+"'s turn.")
+        if game.players[game.currentTurn].id != self.user.id:
+            await self.send_message(game.players[game.currentTurn], "Your turn has come! Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[game.players[game.currentTurn].id]]))
+        if game.players[game.currentTurn].id == self.user.id:
+            await game.bot_play()
         
-    async def cmd_showcount(self, channel, author):
+    async def cmd_plcard(self, channel, author, message, server):
         '''
         Usage:
-            ^showcount
-            Show how many cards everyone in the game has.
+            ^plcard value color
+            Plays a card in an uno game.
+            It must be your turn.
+            Most forms of numbers and words work.
         '''
-        global unotable
-        if unotable[1][5] != True:
-            return Response("Nobody has cards if the game doesn't exist.", delete_after=5)
-        if unotable[1][1] != True:
-            return Response("Everyone has 7 cards, dummy. The game hasn't started", delete_after=5)
-        numret = []
-        for person in unotable[5]:
-            numret.append(person+": "+str(len(unotable[4][person])))
-        await self.send_message(channel, ". ".join(numret))
-    async def cmd_plcard(self, channel, author, message, server, sendpm=True):
-        '''
-        Usage:
-            ^plcard cardvalue color
-            Plays a card in a running uno game when it is your turn and it is possible to play the card. Most forms of words or numbers work.
-        '''
-        global unotable
-        
-        print(unotable[2][0])
-        print(unotable[3][0])
-        print(unotable[5])
-        print(unotable[4])
-        if unotable[1][5] != True:
-            return Response("You can't play in a game that never existed.", delete_after=5)
-        if unotable[1][1] == 0:
-            return Response("The game hasn't started.", delete_after=5)
-        if author.name not in unotable[5]:
-            return Response("You can't play a card if you aren't in the game.", delete_after=5)
-        if author.name != unotable[5][unotable[2][0]]:
-            return Response("You can't play a card if it isn't your turn.", delete_after=5)
+        await self.delete_message(message)
+        if channel.id not in self.UnoGames:
+            return Response("There is no uno game in progress in this channel.", delete_after=15)
+        game = self.UnoGames[channel.id]
+        if author.id not in game.playerCards:
+            return Response("You can't play a card if you aren't in the game.", delete_after=10)
+        if author.id != game.players[game.currentTurn].id:
+            return Response("You can't play a card if it isn't your turn.", delete_after=10)
+        if not game.gameLaunchedFlag:
+            return Response("You can't play a card if the game hasn't started.", delete_after=10)
         allargs = message.content.strip().split()
-        allargs.pop(0)  #allargs = [card, color]
+        allargs.pop(0) #[card, color]
         if len(allargs) != 2:
-            return Response("You need to ^plcard card color", delete_after=5)
+            return Response("Usage: ^plcard value color. This goes for wilds, too.", delete_after=10)
         else:
-            if iscard(allargs) == False:
-                return Response("You need to ^plcard card color", delete_after=5)
-            if allargs[1].lower() in ["red", "green", "blue", "yellow"] or allargs[0].lower() in ["skip", "wild", "draw2", "reverse", "wilddraw4"]:
-                nuarrgs = convcard(allargs) #nu is used for user input and not the top card
+            if not game.card_Checker(allargs):
+                return Response("Usage: ^plcard value color. This goes for wilds, too.", delete_after=10)
+            if allargs[1].lower() in ["red", "green", "blue", "yellow"] or allargs[0].lower() in ["skip","wild","draw2","reverse","wilddraw4"]:
+                nu = game.card_Converter(allargs)
                 usenu = False
-                allargs = nuarrgs.copy()    #this will turn the player input into usable stuff
-                nuarrgs = convcard(nuarrgs)
+                allargs = nu.copy()
+                nu = game.card_Converter(allargs)
             else:
-                nuarrgs = convcard(allargs) #this just gives us a clean version to use later
-                usenu = True   #nu is used for the top card
-            plyrcard = allargs[0]
-            plyrcolr = allargs[1]
-            topcrdarr = convcard(unotable[6].split())       #topcrdarr now becomes a dirty version
-            topcrd = topcrdarr[0]
-            topcolr = topcrdarr[1]
-            print(allargs)
-            print("allargsvstopcrd")
-            print(topcrdarr)
-            if plyrcard.lower()+" "+plyrcolr.lower() not in unotable[4][author.name] and plyrcard.lower() not in ["w", "wd4"]:
-                return Response("You need to have the card in order to play it", delete_after=5)
-            if topcolr.lower() == plyrcolr.lower() or plyrcard.lower() == topcrd.lower() or plyrcard.lower() in ["wd4", "w"]:
-                if plyrcard not in ["wd4", "w"]:
-                    delcard(' '.join(allargs),author.name)
+                nu = game.card_Converter(allargs)
+                usenu = True
+            plyrCard = allargs[0]
+            plyrColr = allargs[1]
+            if game.topCard[0].split()[1] in ["r", "b", "g", "y"]:
+                topCardArr = game.topCard[0].split()
+            else:
+                topCardArr = game.card_Converter(game.topCard[0].split())
+            topCard = topCardArr[0]
+            topColr = topCardArr[1]
+            if plyrCard.lower()+" "+plyrColr.lower() not in game.playerCards[author.id] and plyrCard.lower() not in ["w", "wd4"]:
+                return Response("You need to have the card in order to play it.", delete_after=10)
+            if topColr.lower() == plyrColr.lower() or plyrCard.lower() == topCard.lower() or plyrCard.lower() in ["wd4", "w"]:
+                game.drawCounter = 0
+                if plyrCard not in ["wd4", "w"]:
+                    game.discard(" ".join(allargs), author.id)
                 else:
-                    delcard(plyrcard,author.name)
-                if usenu == True:
-                    unotable[6] = ' '.join(nuarrgs)
-                else:
-                    unotable[6] = ' '.join(nuarrgs)
-                if plyrcard == "d2":
-                    nextturn()
-                    unotable[4][unotable[5][unotable[2][0]]].extend(cards(2))
-                    lstplyr = unotable[5][unotable[2][0]]
-                    lstplyrobj = unotable[7][unotable[2][0]]
-                    nextturn()
-                    await self.send_message(channel, lstplyr+" got skipped and drew 2 cards.")
-                    #for i in range(len(unotable[5])):
-                    #    await self.send_message(lstplyrobj, "Your cards right now: "+", ".join(unotable[4][unotable[7][i].name]))
-                elif plyrcard == "s":
-                    nextturn()
-                    lstplyr = unotable[5][unotable[2][0]]
-                    nextturn()
-                    await self.send_message(channel, lstplyr+" got skipped.")
-                elif plyrcard == "r":
-                    if unotable[1][0] == True:
-                        unotable[1][0] = False
+                    game.discard(plyrCard, author.id)
+                game.topCard = [" ".join(nu)]
+                if plyrCard == "d2":
+                    game.next_turn()
+                    game.playerCards[game.players[game.currentTurn].id].extend(game.card_Gen(2))
+                    poorGuy = game.players[game.currentTurn]
+                    game.next_turn()
+                    await game.clean_Messages(Alt=False)
+                    game.latestMessage = await self.send_message(channel, poorGuy.name+" got skipped and drew 2 cards. It is now "+game.players[game.currentTurn].name+"'s turn.")
+                elif plyrCard == "s":
+                    game.next_turn()
+                    poorGuy = game.players[game.currentTurn]
+                    game.next_turn()
+                    await game.clean_Messages(Alt=False)
+                    game.latestMessage = await self.send_message(channel, poorGuy.name+" got skipped. It is now "+game.players[game.currentTurn].name+"'s turn.")
+                elif plyrCard == "r":
+                    if game.reverseFlag:
+                        game.reverseFlag = False
                     else:
-                        unotable[1][0] = True
-                    nextturn()
-                    await self.send_message(channel, author.name+" used a reverse.")
-                elif plyrcard == "wd4":
-                    if plyrcolr.lower() not in ["y", "g", "r", "b", "red", "blue", "green", "yellow"]:
-                        return Response("You need to specify an actual color", delete_after=5)
-                    nextturn()
-                    #unotable[4][unotable[2][0]].extend(cards(4))
-                    unotable[4][unotable[5][unotable[2][0]]].extend(cards(4))
-                    lstplyr = unotable[5][unotable[2][0]]
-                    nextturn()
-                    await self.send_message(channel, lstplyr+" was skipped and drew 4 cards. The color is "+nuarrgs[1])
-                    #     for i in range(len(unotable[5])):
-                    #         await self.send_message(lstplyr, "Your cards right now: "+", ".join(unotable[4][unotable[7][i].name]))
-                elif plyrcard == "w":
-                    if plyrcolr.lower() not in ["y", "g", "r", "b", "red", "green", "blue", "yellow"]:
-                        return Response("You need to specify an actual color", delete_after=5)
-                    nextturn()
-                    await self.send_message(channel, author.name+" played a FUCKING WILD CARD! The color is now "+nuarrgs[1])
-                else:
-                    nextturn()
-                    #await self.send_message(channel, plyrcard+" "+plyrcolr+" was played. The top card is now "+unotable[6])
-                print(unotable[4][author.name])
-                if len(unotable[4][author.name]) == 1:
-                    await self.send_message(channel, "OH FUCK! UNO! (on "+author.name+")")
-                elif len(unotable[4][author.name]) == 0:
-                    await self.send_message(channel, "Congrats to this MOTHERFUCKER for winning: "+author.name)
-                    unotable = [["."],[".",0,0,0,0,0,0],[],[],[],[],".",[]]
-                    return await self.send_message(channel, "Start another game by saying ^makeuno.")
-                await self.send_message(channel, author.name+" played. The top card is: "+" ".join(colorize(unotable[6].split(), server)))
-                await self.send_message(channel, "It is now "+unotable[5][unotable[2][0]]+"'s turn.")
-                if unotable[5][unotable[2][0]] == self.user.name:
-                    print("Its the bots turn!!")
-                    botcanplay = False
-                    topcrdarr = convcard(unotable[6].split())
-                    for card in unotable[4][self.user.name]:
-                        cardarr = card.split()
-                        if len(cardarr) == 1 or cardarr[0] == topcrdarr[0] or cardarr[1] == topcrdarr[1]:
-                            botcanplay = True
-                            break
-                    if botcanplay == False:
-                        await self.send_message(channel, "^draw")
-                        await self.cmd_draw(channel, self.user, sendpm=False)
-                        print("I had to draw")
-                        for card in unotable[4][self.user.name]:
-                            cardarr = card.split()
-                            if len(cardarr) == 1 or cardarr[0] == topcrdarr[0] or cardarr[1] == topcrdarr[1]:
-                                botcanplay = True
-                                break
-                        if botcanplay == True:
-                            print("I can play a card.")
-                            if len(cardarr) > 1:
-                                sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
-                            else:
-                                wcolr = "r"
-                                for x in unotable[4][self.user.name]:
-                                    if len(x.split()) > 1:
-                                        wcolr = x.split()[1]
-                                    if wcolr == "r":
-                                        wcolr == "b"
-                                    else:
-                                        wcolr == "r"
-                                sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
-                            await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
-                        else:
-                            print("I had to pass")
-                            await self.send_message(channel, "^pass")
-                            await self.cmd_pass(channel, self.user)
-                    else:
-                        print("I can play a card.")
-                        if len(cardarr) > 1:
-                            sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+cardarr[1])
-                        else:
-                            wcolr = "r"
-                            for x in unotable[4][self.user.name]:
-                                if len(x.split()) > 1:
-                                    wcolr = x.split()[1]
-                                if wcolr == "r":
-                                    wcolr == "b"
-                                else:
-                                    wcolr == "r"
-                            sntmsg = await self.send_message(channel, "^plcard "+cardarr[0]+" "+wcolr)
-                        await self.cmd_plcard(channel, self.user, sntmsg, sendpm=False)
+                        game.reverseFlag = True
+                    game.next_turn()
+                    await game.clean_Messages(Alt=False)
+                    game.latestMessage = await self.send_message(channel, author.name+" used a reverse. It is now "+game.players[game.currentTurn].name+"'s turn.")
+                elif plyrCard == "wd4":
+                    if plyrColr.lower() not in ["y", "g", "r", "b", "red", "blue", "green", "yellow"]:
+                        return Response("You need to specify an actual color.", delete_after=10)
+                    game.next_turn()
+                    game.playerCards[game.players[game.currentTurn].id].extend(game.card_Gen(4))
+                    poorGuy = game.players[game.currentTurn]
+                    game.next_turn()
+                    await game.clean_Messages(Alt=False)
                     
-                #for i in range(len(unotable[5])):
-                #    await self.send_message(unotable[7][i], "Your cards right now: "+", ".join(unotable[4][unotable[7][i].name]))
-                #for i in range(len(unotable[5])):
-                #    tmpstr = ""
-                #    for x in unotable[4][unotable[7][i].name].split():
-                #        tmpstr = tmpstr + ", " + " ".join(convcard(x.split()))
-                #    await self.send_message(unotable[7][i], "Your cards right now: "+tmpstr)
-                tmpstr = ""
-                try:
-                    if unotable[5][unotable[2][0]] == self.user.name:
-                        unotable[1][2] = False
-                        unotable[1][4] = 0
-                        return ""
+                    game.latestMessage = await self.send_message(channel, poorGuy.name+" got skipped and drew 4 cards. The color changed to "+game.card_Converter([nu[1]], ColorOnly=True)+". It is now "+game.players[game.currentTurn].name+"'s turn.")
+                elif plyrCard == "w":
+                    if plyrColr.lower() not in ["y", "g", "r", "b", "red", "blue", "green", "yellow"]:
+                        return Response("You need to specify an actual color.", delete_after=10)
+                    game.next_turn()
+                    await game.clean_Messages(Alt=False)
+                    game.latestMessage = await self.send_message(channel, author.name+" played a wild. The color changed to "+game.card_Converter([nu[1]], ColorOnly=True)+". It is now "+game.players[game.currentTurn].name+"'s turn.")
+                else:
+                    game.next_turn()
+                    await game.clean_Messages(Alt=False)
+                    game.latestMessage = await self.send_message(channel, author.name+" played a "+" ".join(game.card_Converter([plyrCard, plyrColr]))+". It is now "+game.players[game.currentTurn].name+"'s turn.")
+                    
+                await game.update_Message()
+                try:    
+                    if len(game.playerCards[author.id]) == 1:
+                        delete_uno = await self.send_message(channel, "UNO! "+author.name+" has 1 card left.")
+                        if game.players[game.currentTurn].id == self.user.id:
+                            await game.bot_play()
+                        else:
+                            await self.send_message(game.players[game.currentTurn], "Your turn has come! Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[game.players[game.currentTurn].id]]))
+                        return await self.delete_message_later(delete_uno, 30)
+                    elif len(game.playerCards[author.id]) == 0:
+                        del game
+                        del self.UnoGames[channel.id]
+                        return await self.send_message(channel, "The game is over. "+author.name+" has won.")
                 except:
-                    print("The game has probably ended and the bot can't figure out whats up. :(")
-                    return ""
-                if not(sendpm):
-                    unotable[1][2] = False
-                    unotable[1][4] = 0
-                    return ""
-                for x in unotable[4][unotable[5][unotable[2][0]]]:
-                    tmpstr = tmpstr + ", " + " ".join(convcard(x.split()))
-                for person in unotable[7]:
-                    if person.name == unotable[5][unotable[2][0]]:
-                        await self.send_message(person, "Your cards right now: "+tmpstr.strip(","))
-                unotable[1][2] = False
-                unotable[1][4] = 0
+                    print("The game has ended and for some reason things broke. Notification still probably went out.")
+                if game.players[game.currentTurn].id == self.user.id:
+                    await game.bot_play()
+                else:
+                    await self.send_message(game.players[game.currentTurn], "Your turn has come! Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[game.players[game.currentTurn].id]]))
+                
             else:
-                return Response("Either something broke or that card doesn't match the top card", delete_after=5)
-    async def cmd_botjoingame(self, author, channel):
-        '''
-        Usage:
-            ^botjoingame
-            Make the bot join the uno game only once.
-        '''
-        global unotable
-        if unotable[1][3] != True:
-            return Response("The bot can't join a game that doesn't exist.", delete_after=5)
-        if author.name not in unotable[5]:
-            return Response("You can't make the bot join a game you aren't playing.", delete_after=5)
-        if unotable[1][6] == True:
-            return Response("The bot cannot join the game twice.", delete_after=5)
-        unotable[1][6] = True
-        unotable[3][0] = unotable[3][0] + 1
-        unotable[4][self.user.name] = cards(7)
-        unotable[5].append(self.user.name)
-        unotable[7].append(self.user)
-        await self.send_message(channel, "An AI has joined the game.")
-        await self.send_message(channel, self.user.name+" is player number "+str(unotable[3][0]))
+                return Response("That does not match the top card.", delete_after=10)
     
     async def cmd_getip(self, channel):
         '''
@@ -3171,10 +2862,13 @@ class MusicBot(discord.Client):
         player.musicdirRefreshLoop = asyncio.ensure_future(self._refresh_looper(player, msg=mainmessage, usr=author))
     async def delete_message_later(self, msg, time=30):
         '''
-        Deletes a message after "time" seconds.
+        Deletes a message after "time" seconds. Tries to do it safely.
         '''
         await asyncio.wait_for(asyncio.sleep(time), timeout=time+5, loop=self.loop)
-        await self.delete_message(msg)
+        try:
+            await self.delete_message(msg)
+        except:
+            print("I could not find the message to delete.")
         
     async def _mess_with_reactions(self, player, msg=None, usr=None, listOfReactions=None, Remove=True, Pagelimit=0, RemoveAll=False):
         '''
@@ -3392,13 +3086,14 @@ class MusicBot(discord.Client):
     async def cmd_mdplay(self, player, author, channel, message, server):
         '''
         Usage:
-            ^mdplay -R #
+            ^mdplay -R/-A #
             ^mdplay filename
             The filename argument is optional.
             If no filename is given, it picks a random file to queue into the playlist.
             If a filename is given, it tries to queue it into the playlist.
             If the -R flag is given, it picks # random files to queue into the playlist.
             If no number is given with the -R flag, it picks 5.
+            If the -A flag is given, it picks every song in the folder in a random order.
             Repeats may occur when picking random files.
         '''
         if not player.musicdir:
@@ -3414,6 +3109,23 @@ class MusicBot(discord.Client):
                 listofFiles.add(x.lower())
         if len(params) == 0:
             randumb = True
+        elif params[0] == "-a":
+            g = 0
+            randomqueue = list(listofFiles)
+            random.shuffle(randomqueue)
+            delete_later = await self.send_message(channel, "This could take a while...")
+            for file in randomqueue:
+                g = g + 1
+                try:
+                    filename = player.musicdirDir+"\\"+file
+                    await player.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=file, Filepath=filename, channel=channel, author=author)
+                except:
+                    await self.edit_message(delete_later, "The process failed somewhere. I have queued as many songs as I could before the failure.")
+                    await self.delete_message_later(message, 10)
+                    return await self.delete_message_later(delete_later, 10)
+            await self.edit_message(delete_later, "I have queued "+str(g)+" files.")
+            await self.delete_message_later(message, 10)
+            return await self.delete_message_later(delete_later, 10)
         elif params[0] != "-r":
             if " ".join(params).lower() in listofFiles:
                 filename = player.musicdirDir+"\\"+" ".join(params)
@@ -5494,7 +5206,7 @@ class MusicBot(discord.Client):
                             else:
                                 await playerinst.playlist.add_entry("NoURL", BeingForced=True, ForcedTitle=curpageDict[direction][1], Filepath=playerinst.musicdirDir+"\\"+curpageDict[direction][1], channel=playerinst.musicdirMessage.channel, author=playerinst.musicdirCreator)
                                 delete_later = await self.send_message(reaction.message.channel, "I queued file "+str(direction)+".")
-                                await self.delete_message_later(delete_later, time=15)
+                                await self.delete_message_later(delete_later, time=3)
                                 skipEdit = True
                     curpageDict = dict()
                     i = 1
@@ -6015,6 +5727,12 @@ class MusicBot(discord.Client):
             
 #womwom end            
         if not message_content.startswith(self.config.command_prefix):
+            if message.channel.id in self.UnoGames:
+                if message.author.id not in ["303440133850660864", "261738076404056064", "240206755156590592"]:
+                    self.UnoGames[message.channel.id].cleanupCounter += 1
+                    if self.UnoGames[message.channel.id].cleanupCounter > 10:
+                        self.UnoGames[message.channel.id].cleanupCounter = 0
+                        await self.UnoGames[message.channel.id].repost_Message()
             return
 
         if message.author == self.user:
