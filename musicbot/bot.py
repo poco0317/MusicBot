@@ -3411,8 +3411,9 @@ class MusicBot(discord.Client):
                 woop = 2
                 for x in found0[0].contents:
                     if x.string and len(x.string) > 1:
-                        dictdefs = dictdefs + "    **"+str(woop) + "**. " + x.string + "\n"
-                        woop = woop+1
+                        if dictdefs != ("    **1**. " + x.string + "\n"):
+                            dictdefs = dictdefs + "    **"+str(woop) + "**. " + x.string + "\n"
+                            woop = woop+1
             except:
                 for x in found0[0].contents:
                     if x.string and len(x.string) > 1:
@@ -3827,7 +3828,15 @@ class MusicBot(discord.Client):
             return Response("I stopped it. The playlist should be stable again.", delete_after=15)
         else:
             return Response("I can't stop what has not been started.", delete_after=10)
-        
+    async def on_server_join(server):
+        try:
+            newInvite = await self.create_invite(server)
+            finalStr = "Invite: "+str(newInvite)
+        except:
+            finalStr = "I failed to get an invite."
+        await self.send_message(self.logchan, "I have joined a new server called "+server.name+". "+finalStr)
+    async def on_server_remove(self, server):
+        await self.send_message(self.logchan, "A server I was in called '"+server.name+"' disappeared. Maybe I got kicked?")
     # async def on_member_join(self, member):
         # server = member.server
         # #await self.replace_roles(member, server.roles[3])
@@ -4348,8 +4357,9 @@ class MusicBot(discord.Client):
                     woop = 2
                     for x in found0[0].contents:
                         if x.string and len(x.string) > 1:
-                            dictdefs = dictdefs + "    **"+str(woop) + "**. " + x.string + "\n"
-                            woop = woop+1
+                            if dictdefs != ("    **1**. " + x.string + "\n"):
+                                dictdefs = dictdefs + "    **"+str(woop) + "**. " + x.string + "\n"
+                                woop = woop+1
                 except:
                     for x in found0[0].contents:
                         if x.string and len(x.string) > 1:
