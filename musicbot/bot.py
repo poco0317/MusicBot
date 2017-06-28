@@ -2410,7 +2410,7 @@ class MusicBot(discord.Client):
         embed.set_thumbnail(url=game.colorURL)
         game.messageHolder = await self.send_message(channel, embed=embed)
         if game.chan != channel.server.default_channel:
-            await self.send_message(channel.server.default_channel, "An Uno game is starting in "+game.chan.name+". Say ^join in there to join the game.")
+            game.alternateMessage = await self.send_message(channel.server.default_channel, "An Uno game is starting in "+game.chan.name+". Say ^join in there to join the game.")
             
     @owner_only
     async def cmd_forceunoupdate(self, channel, author):
@@ -2509,6 +2509,7 @@ class MusicBot(discord.Client):
         game.playerLeftText = game.remove_player(author.id)
         if game.playerLeftText == "LACK OF PLAYERS":
             await self.delete_message(game.messageHolder)
+            await game.clean_Messages()
             delete_later = await self.send_message(channel, "The Uno game must end in a stalemate due to a lack of players.")
             del game
             del self.UnoGames[channel.id]
@@ -2544,6 +2545,7 @@ class MusicBot(discord.Client):
         game.playerLeftText = game.remove_player(user_mentions[0].id)
         if game.playerLeftText == "LACK OF PLAYERS":
             await self.delete_message(game.messageHolder)
+            await game.clean_Messages()
             delete_later = await self.send_message(channel, "The Uno game must end in a stalemate due to a lack of players.")
             del game
             del self.UnoGames[channel.id]
@@ -2572,6 +2574,7 @@ class MusicBot(discord.Client):
         if channel.id not in self.UnoGames:
             return Response("There is no uno game in progress in this channel.", delete_after=15)
         game = self.UnoGames[channel.id]
+        await game.clean_Messages()
         del game
         del self.UnoGames[channel.id]
         return Response("This Uno game has been forcibly stopped.", delete_after=15)
@@ -2762,6 +2765,7 @@ class MusicBot(discord.Client):
                             await self.send_message(game.players[game.currentTurn], "Your turn has come! Your cards:\n"+", ".join([" ".join(game.card_Converter(card.split())) for card in game.playerCards[game.players[game.currentTurn].id]]))
                         return await self.delete_message_later(delete_uno, 30)
                     elif len(game.playerCards[author.id]) == 0:
+                        await game.clean_Messages()
                         del game
                         del self.UnoGames[channel.id]
                         return await self.send_message(channel, "The game is over. "+author.name+" has won.")
