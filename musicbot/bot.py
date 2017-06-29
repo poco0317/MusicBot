@@ -19,6 +19,7 @@ from threading import Timer
 import urllib.request
 from pprint import pprint
 import difflib
+from contextlib import closing
 
 from discord import utils
 from discord.object import Object
@@ -3180,8 +3181,21 @@ class MusicBot(discord.Client):
                 return Response("I have queued a random file.", delete_after=10)
         
         
-        
-        
+    @owner_only
+    async def cmd_file(self, message, author):
+        ''' test '''
+        session = self.aiosession
+        params = message.content.split()
+        url = message.attachments[0]["url"]
+        async with aiohttp.get(url) as r:
+            if r.status == 200:
+                data = await r.read()
+                print(data)
+                f = open("C:\\Users\\Barinade\\Documents\\Discordbots\\MusicBot\\g.mp3", "wb")
+                f.write(data)
+                f.close()
+                print("Done")
+            
         
     
     
@@ -5415,6 +5429,26 @@ class MusicBot(discord.Client):
         
     async def on_message(self, message):
         await self.wait_until_ready()
+        if message.channel.type == discord.ChannelType.private:
+            if message.author.id != self.user.id:
+                if len(message.attachments) > 0:
+                    url = message.attachments[0]["url"]
+                    if url.endswith((".mp3", ".wav", ".flac", ".mp4", ".m4v", ".webm", ".ogg")):
+                        async with aiohttp.get(url) as r:
+                            data = await r.read()
+                            try:
+                                filename = re.search(r"/[^/]+\.[\w\d]+$", url).group(0)
+                            except:
+                                return self.send_message(message.author, "I could not generate a filename from the attachment url. Try renaming and reuploading.")
+                            filename = filename[1:]
+                            f = open("C:\\Users\\Barinade\\Music\\Transfer\\"+filename, "wb")
+                            f.write(data)
+                            f.close()
+                            return self.send_message(message.author, "I have finished downloading and saving the file. You can find it through the musicdir command in the Transfer folder.")
+                    else:
+                        return self.send_message(message.author, "That is not a playable audio file.")
+                else:
+                    return #check for working audio url
         # #troll block
         # if "watermelon" in message.content.lower() or "water melon" in message.content.lower() or "melon" in message.content.lower():
             # return await self.delete_message(message)
